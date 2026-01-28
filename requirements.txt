@@ -1,0 +1,11 @@
+langchain
+langchain_community
+langgraph
+pinecone-client
+pypdf
+python-docx
+streamlit
+google-genai
+python-dotenv
+docx2txt
+textloader
