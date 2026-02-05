@@ -1,0 +1,8 @@
+﻿.env
+clauseai_env/
+__pycache__/
+.vscode/
+*.pyc
+*.pyo
+*.pyd
+.Python

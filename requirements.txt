@@ -1,0 +1,8 @@
+streamlit
+pinecone
+sentence-transformers
+docx2txt
+torch
+numpy
+langgraph-groq
+langchain
