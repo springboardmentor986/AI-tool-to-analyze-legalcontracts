@@ -1,0 +1,67 @@
+“The system follows this pipeline:
+
+Contract upload
+
+Text extraction
+
+Contract domain classification
+
+Planning module selects agents
+
+Specialized AI agents analyze the contract
+
+A consensus agent produces a final verdict
+
+A structured downloadable report is generated”
+
+“LangGraph is used to validate and orchestrate this inter-agent flow.”
+
+
+#Architecture of Multi-turn interaction between agents
+Round 1:
+Legal → JSON
+Compliance → JSON
+Finance → JSON
+Operations → JSON
+
+Round 2 (NEW):
+Each agent receives:
+- Its own output
+- Other agents’ summaries
+→ Produces a refined response
+
+Final:
+Consensus uses refined outputs
+
+# pinecone integration workflow
+PDF / DOC
+   ↓
+Agents (Legal / Compliance / Finance / Ops)
+   ↓
+Structured JSON clauses
+   ↓
+Embeddings (numbers)
+   ↓
+Pinecone (long-term memory)
+
+#FINAL ARCHITECTURE
+Upload Contract
+   ↓
+Extract text
+   ↓
+Parallel agents (Legal, Compliance, Finance, Ops)
+   ↓
+Multi-turn refinement
+   ↓
+Compliance + Finance pipelines
+   ↓
+Store clauses in Pinecone
+   ↓
+Final Verdict
+   ↓
+Tabs (Agent JSON)
+   ↓
+Q&A (Query Pinecone → Gemini)
+   ↓
+Download structured report
+
