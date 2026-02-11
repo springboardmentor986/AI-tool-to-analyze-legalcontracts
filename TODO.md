@@ -1,0 +1,4 @@
+- [x] Fix execute_step_clause in graph.py to analyze clauses instead of running domain agents
+- [x] Add raw_text to context in execute_step for domain agents
+- [x] Update DOMAIN_AGENT_PROMPT to instruct analyzing raw contract text
+- [x] Add expander for domain agent outputs in app.py Report tab

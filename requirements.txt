@@ -1,0 +1,17 @@
+langgraph
+langchain
+langchain-community
+langchain-openai
+langchain-groq
+langchain-google-genai
+langchain-huggingface
+sentence-transformers
+openai
+python-dotenv
+pypdf
+python-docx
+tiktoken
+streamlit
+pinecone>=6,<8
+langchain-pinecone==0.2.13
+orjson
