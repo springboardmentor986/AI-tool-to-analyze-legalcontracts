@@ -6,7 +6,7 @@ import json
 import streamlit as st
 import PyPDF2
 from docx import Document
-from groq import Groqgit 
+from groq import Groq
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from langgraph_flow import run_langgraph_pipeline
