@@ -15,7 +15,7 @@ class BulletproofLLM:
         self.groq = {
             "name": "Groq (Llama 3.1)",
             "builder": lambda: ChatGroq(
-                model="groq/compound",
+                model="llama-3.3-70b-versatile",
                 api_key=os.getenv("groq_api_key"),
                 temperature=0.3
             )
