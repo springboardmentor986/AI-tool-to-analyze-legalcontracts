@@ -9,7 +9,7 @@ from multi_agents.compliance import compliance_agent
 from multi_agents.operations import operations_agent
 
 st.set_page_config(page_title="ClauseAI", layout="wide")
-st.title("ClauseAI – Multi-Agent Contract Analyzer")
+st.title("ClauseAI Multi-Agent Contract Analyzer")
 
 uploaded_file = st.file_uploader(
     "Upload Contract",
@@ -23,18 +23,18 @@ if uploaded_file is not None:
     with open(file_path, "wb") as f:
         f.write(uploaded_file.getbuffer())
 
-    st.success("File uploaded successfully")
+    st.success("File uploaded successfully.")
 
     text = load_document(file_path)
 
     if text.strip() == "":
-        st.error("Text extract aagala. Text-based file upload pannu.")
+        st.error("Text could not be extracted. Please upload a text-based document.")
         st.stop()
 
     chunks = chunk_text(text)
 
     if len(chunks) == 0:
-        st.error("Chunks create aagala.")
+        st.error("Text chunking failed.")
         st.stop()
 
     st.write("Total characters:", len(text))
@@ -45,7 +45,7 @@ if uploaded_file is not None:
 
     st.subheader("Agent Outputs")
 
-    st.write("Legal:", legal_agent(chunks[0]))
-    st.write("Finance:", finance_agent(chunks[0]))
-    st.write("Compliance:", compliance_agent(chunks[0]))
-    st.write("Operations:", operations_agent(chunks[0]))
+    st.write("Legal Analysis:", legal_agent(chunks[0]))
+    st.write("Financial Analysis:", finance_agent(chunks[0]))
+    st.write("Compliance Analysis:", compliance_agent(chunks[0]))
+    st.write("Operational Analysis:", operations_agent(chunks[0]))
