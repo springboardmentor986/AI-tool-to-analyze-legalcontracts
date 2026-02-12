@@ -1,4 +1,4 @@
-# Contract Upload & Basic Parser
+# AI tool to analyze legalcontracts
 
 Run a simple Streamlit app to upload contracts and extract text and basic clauses.
 
