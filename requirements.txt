@@ -1,0 +1,23 @@
+# UI
+streamlit
+
+# Core LangChain + LangGraph
+langchain
+langgraph
+langchain-community
+
+# Ollama (local LLM + embeddings)
+langchain-ollama
+
+# Vector database
+pinecone-client
+
+# Environment variables
+python-dotenv
+
+# Document parsing
+PyPDF2
+python-docx
+
+# Text splitting
+langchain-text-splitters
