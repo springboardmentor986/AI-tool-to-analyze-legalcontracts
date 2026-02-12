@@ -1,93 +1,103 @@
 import streamlit as st
-import os
-from utils.docsloader import load_document, chunk_contract
-from graph.doc_graph import run_graph
+from streamlit_option_menu import option_menu
 
-st.set_page_config(page_title="ClauseAI", layout="wide")
+# --- MODULE IMPORTS ---
+from utils.styles import apply_custom_css, render_3d_cube
+from utils.universal_llm import universal_llm
+from utils.export_utils import generate_pdf
 
-st.markdown("""
-<style>
-    /* Main Body Color */
-    .stApp { background-color: #0b1f3a; color: #f5f7fa; font-family: 'Segoe UI', sans-serif; }
-    
-    /* Sidebar: Set to match the Body (Royal Blue) */
-    section[data-testid="stSidebar"] { background-color: #0b1f3a; border-right: 1px solid rgba(212,175,55,0.35);}
-    section[data-testid="stSidebar"] * { color: #f5f7fa; }
-    
-    /* Headers */
-    h1, h2, h3 { color: #d4af37; }
-    
-    /* Tabs Styling */
-    .stTabs [data-baseweb="tab-list"] { gap: 8px; }
-    .stTabs [data-baseweb="tab"] { 
-        background-color: #102a43; 
-        border-radius: 5px; 
-        color: #d4af37; 
-        padding: 10px 15px;
-    }
-    .stTabs [aria-selected="true"] { 
-        background-color: #d4af37 !important; 
-        color: #0b1f3a !important; 
-        font-weight: bold;
-    }
-    
-    /* Prevent Text Overflow */
-    .report-content {
-        background-color: #102a43;
-        padding: 20px;
-        border-radius: 10px;
-        border: 1px solid rgba(212,175,55,0.2);
-        word-wrap: break-word; /* Prevents overflow */
-        white-space: pre-wrap; /* Preserves formatting */
-        line-height: 1.6;
-    }
-</style>
-""", unsafe_allow_html=True)
+# --- IMPORT VIEWS ---
+# We will create these files next
+from views import main_console, analytics, vault, architecture
 
-st.title("ClauseAI Legal Document Analyzer")
+# 1. PAGE CONFIG
+st.set_page_config(page_title="ClauseAI Ultimate", layout="wide", page_icon="✨")
 
+# 2. APPLY CSS (THE DESIGN ENGINE)
+apply_custom_css()
+
+# 3. INITIALIZE STATE
+if 'results' not in st.session_state: st.session_state['results'] = None
+if 'doc_len' not in st.session_state: st.session_state['doc_len'] = 0
+if 'chat_history' not in st.session_state:
+    st.session_state['chat_history'] = {"legal": [], "finance": [], "compliance": [], "operations": []}
+
+# 4. SIDEBAR
 with st.sidebar:
-    st.header("📂 Contract Upload")
-    uploaded_file = st.file_uploader("Upload Contract", type=["pdf","docx","txt"])
-    st.info("System Components:\n- Planner\n- Legal Agent\n- Finance Agent\n- Compliance Agent\n- Operations Agent\n- Synthesis Reviewer")
+    render_3d_cube() # The 3D Cube lives here!
+    
+    st.markdown("""
+    <div style="text-align: center; margin-bottom: 20px;">
+        <h2 style="color: #00f2ff; margin:0; font-size: 26px;">CLAUSE.AI</h2>
+        <p style="font-size: 10px; color: #64748b; margin:0; letter-spacing: 2px;">NEURAL AUDIT SYSTEM</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    selected = option_menu(
+        menu_title=None,
+        options=["Main Console", "Data Analytics", "The Vault", "Neural Architecture"],
+        icons=["hdd-network", "bar-chart-line-fill", "archive-fill", "diagram-3-fill"], 
+        default_index=0,
+        styles={
+            "container": {"padding": "0!important", "background-color": "transparent"},
+            "icon": {"color": "#00f2ff", "font-size": "16px"}, 
+            "nav-link": {"font-size": "14px", "color": "#94a3b8"},
+            "nav-link-selected": {"background": "rgba(0, 242, 255, 0.1)", "color": "#fff", "border-left": "4px solid #00f2ff"},
+        }
+    )
+    
+    st.markdown("---")
+    
+    # MANUAL PDF DOWNLOAD (Milestone 4 Requirement)
+    if st.session_state['results']:
+        pdf_bytes = generate_pdf(st.session_state['results'])
+        st.download_button(
+            label="📄 Download Report",
+            data=pdf_bytes,
+            file_name="ClauseAI_Audit.pdf",
+            mime="application/pdf",
+            use_container_width=True
+        )
 
-if uploaded_file:
-    os.makedirs("data", exist_ok=True)
-    file_path = os.path.join("data", uploaded_file.name)
-    with open(file_path, "wb") as f:
-        f.write(uploaded_file.getbuffer())
-
-    with st.spinner("🚀 Running Multi-Agent Parallel Analysis & Synthesis..."):
-        results = run_graph(file_path)
-
-    if "synthesis" in results and results["synthesis"].get("status") == "success":
-        st.success("Analysis Complete!")
+# 5. FLOATING CHAT WIDGET (Milestone 4 Requirement)
+with st.popover("💬", help="Ask the Agents"):
+    st.markdown("### 🧠 Neural Link")
+    if not st.session_state['results']:
+        st.warning("Analyze a contract first.")
+    else:
+        agent_tab = st.tabs(["Legal", "Finance", "Compliance", "Ops"])
         
-    st.subheader("🔍 Agent Analysis Results")
+        def render_chat(agent_name, tab_obj):
+            with tab_obj:
+                # History
+                for msg in st.session_state['chat_history'][agent_name]:
+                    st.markdown(f"**{msg['role'].title()}:** {msg['content']}")
+                
+                # Input
+                q = st.text_input(f"Ask {agent_name}...", key=f"q_{agent_name}")
+                if q:
+                    # RAG Context
+                    data = st.session_state['results'].get(agent_name, {})
+                    context = str(data.get('summary', ''))
+                    prompt = f"Role: {agent_name} Expert. Context: {context}. User Question: {q}"
+                    
+                    with st.spinner("..."):
+                        ans = universal_llm.invoke(prompt).content
+                        st.session_state['chat_history'][agent_name].append({"role": "user", "content": q})
+                        st.session_state['chat_history'][agent_name].append({"role": "ai", "content": ans})
+                        st.rerun()
 
-    # TABS: Shortened titles to prevent congestion
-    tab_names = ["📝 Summary", "⚖️ Legal", "💰 Finance", "🛡️ Compliance", "⚙️ Ops"]
-    tabs = st.tabs(tab_names)
+        render_chat("legal", agent_tab[0])
+        render_chat("finance", agent_tab[1])
+        render_chat("compliance", agent_tab[2])
+        render_chat("operations", agent_tab[3])
 
-    # Function to display content safely
-    def display_agent(tab, key, title):
-        with tab:
-            if key in results and results[key].get("status") == "success":
-                data = results[key]
-                st.markdown(f"### {title}")
-                st.markdown(f"**Role:** {data.get('role', 'Analyst')}")
-                # Use a div class to handle text wrapping
-                st.markdown(f'<div class="report-content">{data.get("summary")}</div>', unsafe_allow_html=True)
-            elif key in results and results[key].get("status") == "error":
-                st.error(f"Error: {results[key].get('message')}")
-            else:
-                st.info(f"{title} agent was not triggered for this document.")
-
-    display_agent(tabs[0], "synthesis", "Executive Summary")
-    display_agent(tabs[1], "legal", "Legal Analysis")
-    display_agent(tabs[2], "finance", "Financial Analysis")
-    display_agent(tabs[3], "compliance", "Compliance Analysis")
-    display_agent(tabs[4], "operations", "Operations Analysis")
-
-else:
-    st.info("Please upload a contract to begin.")
+# 6. ROUTING
+if selected == "Main Console":
+    main_console.show()
+elif selected == "Data Analytics":
+    analytics.show()
+elif selected == "The Vault":
+    vault.show()
+elif selected == "Neural Architecture":
+    architecture.show()

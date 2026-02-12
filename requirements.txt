@@ -9,3 +9,8 @@ google-genai
 python-dotenv
 docx2txt
 textloader
+streamlit-option-menu 
+streamlit-extras
+plotly
+fpdf
+faiss-cpu

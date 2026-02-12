@@ -1,7 +1,5 @@
-import openai
-from openai import OpenAI
+from config import llm  # Import the Universal Failover System
 from typing import List, Dict, Any
-from config import GEMINI_API_KEY
 
 class ComplianceAgent:
     """
@@ -9,13 +7,8 @@ class ComplianceAgent:
     and data protection standards.
     """
 
-    def __init__(self, model: str = "gemini-2.5-flash"):
+    def __init__(self):
         self.role = "Compliance Officer"
-        self.model = model
-        self.client = OpenAI(
-            api_key=GEMINI_API_KEY,
-            base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
-        )
 
     def _prepare_prompt(self, text_input: str) -> str:
         """Constructs the compliance-specific analysis prompt."""
@@ -32,14 +25,12 @@ class ComplianceAgent:
         Processes document chunks to identify compliance gaps.
         """
         text_input = "\n\n".join([chunk.page_content for chunk in text_chunks])
+        prompt = self._prepare_prompt(text_input)
 
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": self._prepare_prompt(text_input)}]
-            )
-            
-            summary = response.choices[0].message.content
+            # Run with Universal LLM
+            response = llm.invoke(prompt)
+            summary = response.content
 
             return {
                 "agent": "Compliance",

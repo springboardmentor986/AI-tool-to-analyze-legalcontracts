@@ -2,8 +2,7 @@ import operator
 import uuid
 from typing import Annotated, TypedDict, List
 from langgraph.graph import StateGraph, END
-from openai import OpenAI
-from config import GEMINI_API_KEY
+from config import llm
 
 # Import Agents
 from planner.planner import plan_agents
@@ -18,6 +17,7 @@ from utils.pinecone_client import get_pinecone_client
 class GraphState(TypedDict):
     contract_chunks: List[any]
     plan: List[str]
+    # operator.ior allows merging results from parallel agents (dict | dict)
     results: Annotated[dict, operator.ior]
 
 # Initialize Agents
@@ -32,7 +32,7 @@ def planner_node(state: GraphState):
     full_text = " ".join([chunk.page_content for chunk in chunks])
     plan = plan_agents(full_text)
     
-    # FORCE Operations if not visible in the ui
+    # FORCE Operations if not visible in the ui (Optional logic)
     if "operations" not in plan:
         plan.append("operations")
         
@@ -51,16 +51,17 @@ def compliance_node(state):
 def operations_node(state):
     return {"results": {"operations": operations_agent.run(state['contract_chunks'])}}
 
-# Synthesis Node
+# Synthesis Node (UPDATED TO USE UNIVERSAL LLM)
 def reviewer_node(state: GraphState):
     results = state['results']
     combined_text = ""
+    
+    # Aggregate reports from successful agents
     for agent, data in results.items():
         if data.get("status") == "success":
             combined_text += f"\n--- {agent.upper()} REPORT ---\n{data.get('summary')}\n"
     
     # Synthesis Prompt
-    client = OpenAI(api_key=GEMINI_API_KEY, base_url="https://generativelanguage.googleapis.com/v1beta/openai/")
     prompt = (
         "You are the Lead Contract Reviewer. The following are reports from your domain experts. "
         "Synthesize these findings into a single, cohesive Executive Summary. "
@@ -69,12 +70,21 @@ def reviewer_node(state: GraphState):
     )
     
     try:
-        response = client.chat.completions.create(
-            model="gemini-2.5-flash",
-            messages=[{"role": "user", "content": prompt}]
-        )
-        synthesis = response.choices[0].message.content
-        return {"results": {"synthesis": {"agent": "Reviewer", "role": "Lead", "summary": synthesis, "status": "success"}}}
+        # --- USE THE FAILOVER SYSTEM HERE ---
+        # No more hardcoded OpenAI client!
+        response = llm.invoke(prompt)
+        synthesis = response.content
+        
+        return {
+            "results": {
+                "synthesis": {
+                    "agent": "Reviewer", 
+                    "role": "Lead", 
+                    "summary": synthesis, 
+                    "status": "success"
+                }
+            }
+        }
     except Exception as e:
         return {"results": {"synthesis": {"status": "error", "message": str(e)}}}
 
@@ -93,6 +103,7 @@ def storage_node(state: GraphState):
                 "values": [0.1] * 1536, 
                 "metadata": {
                     "agent": agent_name,
+                    # Truncate to avoid metadata limits
                     "summary": data.get("summary", "")[:30000]
                 }
             })
@@ -119,7 +130,10 @@ workflow.add_node("storage", storage_node)
 workflow.set_entry_point("planner")
 
 workflow.add_conditional_edges("planner", parallel_router, {
-    "legal": "legal", "finance": "finance", "compliance": "compliance", "operations": "operations"
+    "legal": "legal", 
+    "finance": "finance", 
+    "compliance": "compliance", 
+    "operations": "operations"
 })
 
 # All agents go to Reviewer

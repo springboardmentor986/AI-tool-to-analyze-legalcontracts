@@ -1,7 +1,5 @@
-import openai
-from openai import OpenAI
+from config import llm  # Import the Universal Failover System
 from typing import List, Dict, Any
-from config import GEMINI_API_KEY
 
 class FinanceAgent:
     """
@@ -9,13 +7,9 @@ class FinanceAgent:
     including payment terms, penalties, and fiscal risks.
     """
 
-    def __init__(self, model: str = "gemini-2.5-flash"):
+    def __init__(self):
         self.role = "Financial Analyst"
-        self.model = model
-        self.client = OpenAI(
-            api_key=GEMINI_API_KEY,
-            base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
-        )
+        # Removed hardcoded OpenAI client. 'llm' from config handles everything.
 
     def _prepare_prompt(self, text_input: str) -> str:
         """Constructs the financial analysis prompt."""
@@ -31,15 +25,18 @@ class FinanceAgent:
         """
         Processes document chunks to extract financial data.
         """
+        # 1. Combine chunks
         text_input = "\n\n".join([chunk.page_content for chunk in text_chunks])
+        
+        # 2. Prepare Prompt
+        prompt = self._prepare_prompt(text_input)
 
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": self._prepare_prompt(text_input)}]
-            )
+            # 3. RUN WITH FAILOVER (Groq -> Google -> OpenRouter -> HF -> Ollama)
+            response = llm.invoke(prompt)
             
-            summary = response.choices[0].message.content
+            # 4. Extract Text
+            summary = response.content
 
             return {
                 "agent": "Finance",
