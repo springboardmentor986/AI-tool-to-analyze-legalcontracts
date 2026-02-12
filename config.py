@@ -21,7 +21,7 @@ AGENT_OBJECTIVES = {
 CHUNK_SIZE = 1000
 
 # Pinecone settings
-PINECONE_INDEX_NAME = "clauseai-index"
-PINECONE_CLOUD = "aws"
-PINECONE_REGION = "us-east-1"
+PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "clauseai-index")
+PINECONE_CLOUD = os.getenv("PINECONE_CLOUD", "aws")
+PINECONE_REGION = os.getenv("PINECONE_REGION", "us-east-1")
 TOP_K_RESULTS = 5

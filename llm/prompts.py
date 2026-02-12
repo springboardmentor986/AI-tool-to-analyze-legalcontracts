@@ -84,7 +84,9 @@ Instructions:
 3.  **Risk Highlighting**:
     - Explicitly tag risks as **[Low]**, **[Medium]**, or **[High]**.
 
-4.  **Formatting**:
     - Use Markdown for bolding and lists.
     - Ensure the final output is ready for direct export to PDF/Word.
+
+5.  **User Preferences & Customization**:
+    {user_instructions}
 """

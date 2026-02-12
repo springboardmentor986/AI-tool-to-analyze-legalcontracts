@@ -39,8 +39,10 @@ class BaseAgent:
         # If vector search returns insufficient data (e.g., short text or ingestion issue),
         # we fall back to processing the raw text directly, truncated to safe limits.
         if not retrieved_context.strip():
-            # Log usage of fallback (in a real app, use proper logging)
-            # print(f"[{self.role}] Using raw text fallback.")
+            # Log usage of fallback (professional logging)
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"[{self.role}] Context retrieval failed/empty. Using raw text fallback.")
             final_context = contract_text[:15000] # Safe token limit estimate
         else:
             final_context = retrieved_context

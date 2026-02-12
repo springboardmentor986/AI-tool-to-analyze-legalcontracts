@@ -34,6 +34,22 @@ with st.sidebar:
     st.warning(
         "**Disclaimer**: This tool is an AI assistant for document analysis and does not constitute professional legal advice. Always consult with a qualified attorney for final contract review."
     )
+    
+    # --- Customization Options ---
+    st.divider()
+    st.header("Report Customization")
+    
+    report_tone = st.radio(
+        "Report Tone",
+        ["Standard Professional", "Executive Summary (Brief)", "Plain English (Simplified)", "Strict Legal"]
+    )
+    
+    st.divider()
+    
+    focus_area = st.radio(
+        "Focus Area",
+        ["General Analysis", "Financial Risks", "Compliance Gaps", "Operational Liabilities", "Legal Loopholes"]
+    )
 
 # ---------- Main Content ----------
 col1, col2 = st.columns([4, 1])
@@ -128,23 +144,23 @@ if analyze_clicked:
                 st.write("Initializing workflow graph...")
                 graph = build_clauseai_graph()
                 
-                st.write("Ingesting and embedding document chunks...")
+                with st.spinner("📄 Ingesting and embedding document chunks..."):
+                    # Use passed data or fallback to text
+                    input_data = all_extracted_data if 'all_extracted_data' in locals() and all_extracted_data else [{"text": contract_text, "source": "user_input", "page": 1}]
+                    # Small delay to visual comfort if needed, but actual logic matches
+                    
+                with st.spinner("🕵️‍♂️ Running multi-agent analysis (Finance, Legal, Compliance, Operations)..."):
+                    # Use asyncio.run for async graph execution
+                    import asyncio
+                    result = asyncio.run(graph.ainvoke({
+                        "contract_text": contract_text,
+                        "extracted_data": input_data,
+                        "user_instructions": final_instructions
+                    }))
                 
-                # Use passed data or fallback to text
-                input_data = all_extracted_data if 'all_extracted_data' in locals() and all_extracted_data else [{"text": contract_text, "source": "user_input", "page": 1}]
-
-                st.write("Running domain-specific analysis (Parallel Execution)...")
-                
-                # Use asyncio.run for async graph execution
-                import asyncio
-                result = asyncio.run(graph.ainvoke({
-                    "contract_text": contract_text,
-                    "extracted_data": input_data,
-                    "user_instructions": user_instructions
-                }))
-                
-                st.write("Synthesizing final report...")
-                st.session_state.analysis_result = result
+                with st.spinner("📝 Synthesizing final strategic report..."):
+                    st.session_state.analysis_result = result
+                    
                 status.update(label="✅ Analysis Complete!", state="complete", expanded=False)
 
             except Exception as e:

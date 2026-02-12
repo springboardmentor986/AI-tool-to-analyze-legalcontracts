@@ -2,7 +2,7 @@ from llm.gemini import call_gemini
 from llm.prompts import SYNTHESIS_PROMPT
 
 class SynthesisAgent:
-    def synthesize(self, agent_outputs):
+    def synthesize(self, agent_outputs, user_instructions="None"):
         """
         Combines outputs from all agents into a final report.
         """
@@ -13,7 +13,10 @@ class SynthesisAgent:
 
         try:
             # Construct the comprehensive prompt
-            prompt = SYNTHESIS_PROMPT.format(agent_outputs=formatted_outputs)
+            prompt = SYNTHESIS_PROMPT.format(
+                agent_outputs=formatted_outputs,
+                user_instructions=user_instructions
+            )
             
             # Application of the synthesis logic via LLM
             report = call_gemini(prompt)

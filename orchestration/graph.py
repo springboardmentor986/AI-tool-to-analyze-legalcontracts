@@ -98,7 +98,10 @@ def synthesis_node(state: ClauseAIState) -> ClauseAIState:
     Combines agent outputs into a final report.
     """
     synthesizer = SynthesisAgent()
-    state["final_report"] = synthesizer.synthesize(state["agent_outputs"])
+    state["final_report"] = synthesizer.synthesize(
+        state["agent_outputs"],
+        state.get("user_instructions", "None")
+    )
     return state
 
 
