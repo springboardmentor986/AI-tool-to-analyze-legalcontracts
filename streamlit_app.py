@@ -32,6 +32,9 @@ st.set_page_config(
 if "analysis_done" not in st.session_state:
     st.session_state.analysis_done = False
 
+if "custom_report" not in st.session_state:
+    st.session_state.custom_report = None
+
 
 # --------------------------------------------------
 # GROQ CLIENT
@@ -46,19 +49,35 @@ def safe_llm(prompt: str):
             messages=[{"role": "user", "content": prompt}]
         )
         return r.choices[0].message.content.strip()
-    except Exception:
+    except Exception as e:
+        print("LLM Error:", e)
         return None
 
 
 def safe_json(text):
     try:
         return json.loads(text)
-    except Exception:
+    except:
         return {}
 
 
 # --------------------------------------------------
-# AUTO SUMMARY GENERATOR (ROBUST FALLBACK)
+# SPLIT CONTRACT FOR AGENTS
+# --------------------------------------------------
+def get_agent_context(agent, text):
+
+    parts = {
+        "Legal": text[:3000],
+        "Finance": text[3000:6000],
+        "Compliance": text[6000:9000],
+        "Operations": text[-3000:]
+    }
+
+    return parts.get(agent, text[:3000])
+
+
+# --------------------------------------------------
+# AUTO SUMMARY GENERATOR
 # --------------------------------------------------
 def generate_agent_summary(agent, clauses_text, full_contract_text):
 
@@ -87,6 +106,45 @@ Context:
     result = safe_llm(prompt)
 
     return safe_json(result) if result else {}
+
+
+# --------------------------------------------------
+# CUSTOM REPORT GENERATOR (NEW FEATURE)
+# --------------------------------------------------
+def generate_custom_report(
+        agent_results,
+        verdict,
+        tone,
+        focus,
+        length,
+        structure
+):
+
+    prompt = f"""
+You are a professional contract consultant.
+
+Generate a customized contract report.
+
+User Preferences:
+- Tone: {tone}
+- Focus: {focus}
+- Length: {length}
+- Structure: {structure}
+
+Use this analysis data:
+{json.dumps(agent_results)[:6000]}
+
+Final Verdict:
+{verdict}
+
+Rules:
+- Follow preferences strictly
+- Be clear and structured
+- No markdown symbols
+- Produce clean final report
+"""
+
+    return safe_llm(prompt)
 
 
 # --------------------------------------------------
@@ -143,26 +201,35 @@ def extract_text(file, ext):
 def agent_prompt(agent, text):
 
     return f"""
-Return ONLY valid JSON.
+You are a senior {agent} contract risk auditor.
+
+Return ONLY valid JSON:
 
 {{
  "domain_summary": {{
    "overall_risk": "Low|Medium|High",
-   "key_concerns": [],
-   "priority_actions": []
+   "key_concerns": ["..."],
+   "priority_actions": ["..."]
  }},
- "clauses": []
+ "clauses": [
+   {{
+     "clause_type":"",
+     "summary":"",
+     "risk_level":"Low|Medium|High",
+     "recommendation":""
+   }}
+ ]
 }}
 
-Analyze this contract from {agent.upper()} perspective.
+Focus only on {agent.upper()} risks.
 
 Contract:
-{text[:3000]}
+{text}
 """
 
 
 # --------------------------------------------------
-# PARALLEL AGENT EXECUTION
+# PARALLEL AGENTS
 # --------------------------------------------------
 def run_agents_parallel(text):
 
@@ -172,7 +239,10 @@ def run_agents_parallel(text):
     with ThreadPoolExecutor(max_workers=4) as executor:
 
         futures = {
-            executor.submit(safe_llm, agent_prompt(agent, text)): agent
+            executor.submit(
+                safe_llm,
+                agent_prompt(agent, get_agent_context(agent, text))
+            ): agent
             for agent in agents
         }
 
@@ -180,6 +250,11 @@ def run_agents_parallel(text):
 
             agent = futures[future]
             output = future.result()
+
+            if not output:
+                output = safe_llm(
+                    agent_prompt(agent, get_agent_context(agent, text))
+                )
 
             results[agent] = output if output else "{}"
 
@@ -192,18 +267,15 @@ def run_agents_parallel(text):
 def generate_verdict(agent_results):
 
     return safe_llm(f"""
-Summarize overall contract risk using:
+Summarize overall contract risk:
 
 {json.dumps(agent_results)[:6000]}
 
 Format:
-### Overall Risk: Low/Medium/High
+### Overall Risk
 **Key Issues**
-- ...
 **Red Flags**
-- ...
 **Next Steps**
-- ...
 """)
 
 
@@ -219,10 +291,7 @@ if uploaded_file and analyze_btn:
         st.error("❌ Failed to extract text")
         st.stop()
 
-
-    # Save full contract text (IMPORTANT)
     st.session_state.full_contract_text = text
-
 
     with st.spinner("🧠 Running multi-agent analysis..."):
 
@@ -250,11 +319,11 @@ if uploaded_file and analyze_btn:
                 store_clause_vectors(index, contract_id, agent, clauses)
 
 
-    # Session
     st.session_state.analysis_done = True
     st.session_state.agent_results = agent_results
     st.session_state.verdict = verdict
     st.session_state.contract_name = uploaded_file.name
+    st.session_state.custom_report = None
 
     st.success("✅ Analysis completed successfully!")
 
@@ -283,14 +352,10 @@ if st.session_state.analysis_done:
 
         with tab:
 
-            parsed = safe_json(
-                st.session_state.agent_results[agent]
-            )
+            parsed = safe_json(st.session_state.agent_results[agent])
 
             clauses = parsed.get("clauses", [])
 
-
-            # ---------- GUARANTEED SUMMARY ----------
             summary = parsed.get("domain_summary")
 
             if not summary or not summary.get("overall_risk"):
@@ -306,64 +371,96 @@ if st.session_state.analysis_done:
                     st.session_state.full_contract_text
                 )
 
+                parsed["domain_summary"] = summary
+                st.session_state.agent_results[agent] = json.dumps(parsed)
 
-            # ---------- UI ----------
+
             st.markdown(f"### 📊 {agent} Summary")
 
-            st.metric(
-                "Overall Risk",
-                summary.get("overall_risk", "N/A")
-            )
-
+            st.metric("Overall Risk", summary.get("overall_risk", "N/A"))
 
             st.markdown("**Key Concerns**")
-
-            if summary.get("key_concerns"):
-                for x in summary["key_concerns"]:
-                    st.write("•", x)
-            else:
-                st.write("• No major concerns identified")
-
+            for x in summary.get("key_concerns", ["None"]):
+                st.write("•", x)
 
             st.markdown("**Priority Actions**")
-
-            if summary.get("priority_actions"):
-                for x in summary["priority_actions"]:
-                    st.write("•", x)
-            else:
-                st.write("• No immediate actions required")
-
+            for x in summary.get("priority_actions", ["None"]):
+                st.write("•", x)
 
             st.divider()
 
 
-            # ---------- CLAUSES ----------
-            st.markdown("### 📄 Extracted Clauses")
+    # --------------------------------------------------
+    # CUSTOM REPORT SECTION (NEW)
+    # --------------------------------------------------
+    st.subheader("📄 Customize & Download Report")
 
-            if clauses:
+    c1, c2, c3, c4 = st.columns(4)
 
-                for i, c in enumerate(clauses, 1):
+    with c1:
+        tone = st.selectbox(
+            "Tone",
+            ["Formal", "Simple", "Professional", "Legal-Style"]
+        )
 
-                    with st.expander(
-                        f"{i}. {c.get('clause_type')} ({c.get('risk_level')})"
-                    ):
+    with c2:
+        focus = st.selectbox(
+            "Focus",
+            ["Balanced", "Risk", "Finance", "Compliance", "Operations"]
+        )
 
-                        st.write("**Summary:**", c.get("summary"))
-                        st.write("**Recommendation:**", c.get("recommendation"))
+    with c3:
+        length = st.selectbox(
+            "Length",
+            ["Short", "Medium", "Detailed"]
+        )
 
+    with c4:
+        structure = st.selectbox(
+            "Structure",
+            ["Executive Summary", "Bullet Points", "Paragraph"]
+        )
+
+
+    gen_btn = st.button("✨ Generate Custom Report")
+
+
+    if gen_btn:
+
+        with st.spinner("📝 Generating personalized report..."):
+
+            report = generate_custom_report(
+                st.session_state.agent_results,
+                st.session_state.verdict,
+                tone,
+                focus,
+                length,
+                structure
+            )
+
+            if report:
+                st.session_state.custom_report = report
+                st.success("✅ Custom report generated!")
             else:
-                st.info("No significant clauses extracted.")
+                st.error("❌ Failed to generate report")
 
 
-    # ---------- Download ----------
-    st.subheader("📥 Download Full Report")
+    # Preview + Download
+    if st.session_state.custom_report:
 
-    st.download_button(
-        "⬇️ Download Analysis Report",
-        json.dumps(st.session_state.agent_results, indent=2),
-        "ClauseAI_Report.json",
-        "application/json"
-    )
+        st.markdown("### 👀 Report Preview")
+
+        st.text_area(
+            "Generated Report",
+            st.session_state.custom_report,
+            height=300
+        )
+
+        st.download_button(
+            "⬇️ Download Custom Report",
+            st.session_state.custom_report,
+            "ClauseAI_Custom_Report.txt"
+        )
 
 
     # ---------- RAG ----------
@@ -390,16 +487,48 @@ c1, c2, c3 = st.columns(3)
 
 with c1:
     st.markdown("### 📊 Visualization Dashboard")
-    st.write("Simple visual insights for risk and clauses.")
 
 with c2:
     st.markdown("### 🤝 Negotiation AI")
-    st.write("AI-powered negotiation suggestions before signing.")
 
 with c3:
     st.markdown("### 🗺️ Smart Action Plan")
-    st.write("Clear next steps without legal complexity.")
 
+# --------------------------------------------------
+# CONTACT & FEEDBACK (MINIMAL PROTOTYPE)
+# --------------------------------------------------
+st.divider()
+
+
+col1, col2 = st.columns(2)
+
+# -------------------------
+# CONTACT INFO (Simple)
+# -------------------------
+with col1:
+    st.markdown("### 📩 Contact Us")
+
+    st.write("Have questions or suggestions?")
+    st.write("📧 Email: support@clauseai.ai")
+    st.write("🌐 Website: www.clauseai.ai")
+    st.write("📍 Location: India")
+
+
+# -------------------------
+# QUICK FEEDBACK
+# -------------------------
+with col2:
+    st.markdown("### ⭐ Quick Feedback")
+
+    rating = st.slider("Rate ClauseAI", 1, 5, 4)
+
+    feedback = st.text_area(
+        "Your suggestion (optional)",
+        height=100
+    )
+
+    if st.button("Submit"):
+        st.success("✅ Thank you for your feedback!")
 
 # --------------------------------------------------
 # FOOTER
