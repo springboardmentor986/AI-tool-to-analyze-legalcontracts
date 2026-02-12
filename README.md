@@ -61,8 +61,6 @@ It is designed for non-technical users, startups, and enterprises to understand 
 
 ---
 
----
-
 ## 🏗️ System Architecture
 
 ```text
@@ -81,4 +79,5 @@ Pinecone Vector Storage
 RAG Query Engine
         ↓
 Visualization + Reports
+
 
