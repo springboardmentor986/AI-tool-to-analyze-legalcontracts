@@ -1,51 +1,39 @@
 import streamlit as st
-import os
+from contract_processor import process_contract
+from config import APP_TITLE
+from rag_chatbot import contract_chat
 
-from utils.parser import load_document, chunk_text
+st.title(APP_TITLE)
 
-from multi_agents.legal import legal_agent
-from multi_agents.finance import finance_agent
-from multi_agents.compliance import compliance_agent
-from multi_agents.operations import operations_agent
+# Sidebar customization
+st.sidebar.header("Customization Panel")
 
-st.set_page_config(page_title="ClauseAI", layout="wide")
-st.title("ClauseAI Multi-Agent Contract Analyzer")
+tone = st.sidebar.selectbox("Select Tone", ["Formal", "Professional", "Simple"])
+focus = st.sidebar.selectbox("Focus Area", ["Risk", "Compliance", "Summary"])
+structure = st.sidebar.selectbox("Structure", ["Detailed", "Executive Summary"])
 
-uploaded_file = st.file_uploader(
-    "Upload Contract",
-    type=["pdf", "docx", "txt"]
-)
+uploaded_files = st.file_uploader("Upload Contracts", accept_multiple_files=True)
 
-if uploaded_file is not None:
-    os.makedirs("data", exist_ok=True)
-    file_path = os.path.join("data", uploaded_file.name)
+if uploaded_files:
+    for file in uploaded_files:
+        content = file.read().decode(errors="ignore")
 
-    with open(file_path, "wb") as f:
-        f.write(uploaded_file.getbuffer())
+        report, risk_score = process_contract(content, tone, focus, structure)
 
-    st.success("File uploaded successfully.")
+        st.success("Report Generated Successfully!")
+        st.metric("Risk Score", risk_score)
+        st.text(report)
 
-    text = load_document(file_path)
+        st.download_button("Download Report", report, file_name="report.txt")
 
-    if text.strip() == "":
-        st.error("Text could not be extracted. Please upload a text-based document.")
-        st.stop()
+# ---------------- CHAT SECTION ---------------- #
 
-    chunks = chunk_text(text)
+st.header("Ask Questions About Contract")
 
-    if len(chunks) == 0:
-        st.error("Text chunking failed.")
-        st.stop()
+user_question = st.text_input("Enter your question")
 
-    st.write("Total characters:", len(text))
-    st.write("Total chunks:", len(chunks))
-
-    st.subheader("Sample Chunk")
-    st.write(chunks[0])
-
-    st.subheader("Agent Outputs")
-
-    st.write("Legal Analysis:", legal_agent(chunks[0]))
-    st.write("Financial Analysis:", finance_agent(chunks[0]))
-    st.write("Compliance Analysis:", compliance_agent(chunks[0]))
-    st.write("Operational Analysis:", operations_agent(chunks[0]))
+if user_question and uploaded_files:
+    for file in uploaded_files:
+        content = file.read().decode(errors="ignore")
+        answer = contract_chat(content, user_question)
+        st.write("Answer:", answer)
