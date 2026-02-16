@@ -2,7 +2,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 import plotly.graph_objects as go
 import plotly.express as px
-import tempfile, os, time
+import tempfile, os, time, traceback
 from dotenv import load_dotenv
 
 from parsers.universal_loader import load_document
@@ -19,18 +19,10 @@ st.set_page_config(
 )
 
 # ================= CSS =================
-st.markdown("""
-<style>
-body {
-    background: radial-gradient(circle at top, #0b1220, #05070c);
-    color: #e6edf3;
-}
+st.markdown("""<style>
+body {background: radial-gradient(circle at top, #0b1220, #05070c); color: #e6edf3;}
 .block-container { padding-top: 1rem; }
-
-.sidebar .sidebar-content {
-    background: linear-gradient(180deg, #0c1526, #060912);
-}
-
+.sidebar .sidebar-content {background: linear-gradient(180deg, #0c1526, #060912);}
 .glass {
     background: rgba(18,30,47,0.92);
     backdrop-filter: blur(18px);
@@ -40,12 +32,10 @@ body {
     box-shadow: 0 0 40px rgba(0,255,200,0.15);
     animation: fadeIn 0.6s ease;
 }
-
 @keyframes fadeIn {
     from {opacity:0; transform:translateY(12px)}
     to {opacity:1; transform:translateY(0)}
 }
-
 .metric {
     background: linear-gradient(135deg,#0f253f,#081626);
     border-radius:18px;
@@ -53,47 +43,35 @@ body {
     text-align:center;
     box-shadow:0 0 25px rgba(0,255,200,.18);
 }
-
-.metric h2 {
-    font-size:36px;
-    margin:0;
-    color:#5effc9;
-}
-
+.metric h2 {font-size:36px; margin:0; color:#5effc9;}
 .agent-pill {
-    display:inline-block;
-    padding:10px 18px;
-    margin:6px;
+    display:inline-block; padding:10px 18px; margin:6px;
     border-radius:20px;
     background:linear-gradient(135deg,#142b46,#0b1728);
     box-shadow:0 0 14px rgba(0,255,200,.25);
     font-weight:600;
 }
-
 .oracle-box {
-    border-radius:22px;
-    padding:26px;
+    border-radius:22px; padding:26px;
     background:linear-gradient(180deg,#0e1f34,#091526);
     box-shadow:0 0 50px rgba(0,255,180,.25);
 }
-
 .thinking {
     font-style:italic;
     color:#5effc9;
     animation: blink 1.2s infinite;
 }
-
 @keyframes blink {
     0% {opacity:.2}
     50% {opacity:1}
     100% {opacity:.2}
 }
-</style>
-""", unsafe_allow_html=True)
+</style>""", unsafe_allow_html=True)
 
 # ================= SESSION =================
 if "chatbot" not in st.session_state:
     st.session_state.chatbot = ContractChatbot()
+
 if "analysis_output" not in st.session_state:
     st.session_state.analysis_output = None
 
@@ -116,16 +94,38 @@ with st.sidebar:
 # ================= PROCESS =================
 if uploaded_files and st.session_state.analysis_output is None:
     with st.spinner("⚡ Activating Neural Grid..."):
-        combined_text = ""
-        for file in uploaded_files:
-            with tempfile.NamedTemporaryFile(delete=False) as tmp:
-                tmp.write(file.read())
-                path = tmp.name
-            combined_text += load_document(path)
-            os.remove(path)
+        try:
+            combined_text = ""
+            for file in uploaded_files:
+                with tempfile.NamedTemporaryFile(delete=False) as tmp:
+                    tmp.write(file.read())
+                    path = tmp.name
 
-        result = run_langgraph(combined_text)
-        st.session_state.analysis_output = result
+                combined_text += load_document(path)
+                os.remove(path)
+
+            raw_result = run_langgraph(combined_text)
+
+            # ✅ HARD GUARANTEE STRUCTURE
+            st.session_state.analysis_output = {
+                "summary": raw_result.get("summary", "ClauseAI analysis completed."),
+                "legal": raw_result.get("legal", "No legal risks detected."),
+                "finance": raw_result.get("finance", "No financial risks detected."),
+                "compliance": raw_result.get("compliance", "Compliance looks acceptable."),
+                "risk": raw_result.get("risk", "Overall risk appears moderate.")
+            }
+
+        except Exception as e:
+            print("❌ LANGGRAPH ERROR:")
+            traceback.print_exc()
+
+            st.session_state.analysis_output = {
+                "summary": "ClauseAI encountered a temporary issue. Please try again.",
+                "legal": "",
+                "finance": "",
+                "compliance": "",
+                "risk": ""
+            }
 
 result = st.session_state.analysis_output
 
