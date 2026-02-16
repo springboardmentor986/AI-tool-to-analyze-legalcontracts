@@ -5,22 +5,30 @@ llm = get_llm()
 
 def chat_with_contract(context: str, question: str) -> str:
     """
-    AI Assistant for Contract Q&A (Low-token optimized)
+    Improved Contract Q&A Assistant
 
-    - Uses ONLY pre-analyzed agent outputs
-    - No re-analysis of contract text
-    - Strict grounding to avoid hallucinations
+    - Uses ONLY analyzed agent outputs
+    - Allows semantic understanding (not strict keyword match)
+    - Still prevents hallucinations
+    - Low token optimized
     """
 
     prompt = f"""
-Answer the question using ONLY the information below.
-If the answer is not present, reply exactly:
-"Not found in analyzed contract."
+You are a contract analysis assistant.
 
-INFO:
+Answer the question using ONLY the provided contract insights.
+If relevant information exists, explain clearly.
+If no related information exists at all, reply exactly:
+Not found in analyzed contract.
+
+Contract Insights:
 {context}
 
-Q: {question}
-A:
+Question:
+{question}
+
+Answer in clear professional language.
 """
-    return llm.invoke(prompt).content
+    
+    response = llm.invoke(prompt).content.strip()
+    return response

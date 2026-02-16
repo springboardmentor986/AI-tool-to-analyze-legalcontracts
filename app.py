@@ -17,6 +17,7 @@ from pipelines.risk_pipeline import (
     finance_risk_pipeline,
     calculate_overall_risk
 )
+
 from multi_turn.agent_interaction import finance_reviews_legal
 from memory.pinecone_store import store_result
 from ai_assistant.ai_chat import chat_with_contract
@@ -44,7 +45,7 @@ section = st.sidebar.radio(
     ]
 )
 
-st.sidebar.caption("Parallel Agents • Multi-Document • Memory")
+st.sidebar.caption("AI Contract Intelligence Platform")
 
 # ---------------- Header ----------------
 st.title("📄 ClauseAI – AI Contract Intelligence Platform")
@@ -249,34 +250,61 @@ elif section == "Download Report":
     if not st.session_state.documents:
         st.info("Upload contracts first.")
     else:
-        now = datetime.now().strftime("%d %B %Y | %H:%M")
-        report = f"ClauseAI Report\nGenerated: {now}\n\n"
+        st.subheader("📥 Generate Customized Report")
 
-        for doc in st.session_state.documents:
-            report += f"""
-==============================
-DOCUMENT: {doc['name']}
-==============================
+        # -------- Customization Options --------
+        st.subheader("🛠 Report Customization")
 
-LEGAL:
-{doc['legal']}
+        report_tone = st.selectbox(
+            "Select Report Tone",
+            ["Professional", "Concise", "Detailed"]
+        )
 
-FINANCE:
-{doc['finance']}
+        report_focus = st.multiselect(
+            "Select Sections to Include",
+            [
+                "Executive Summary",
+                "Legal",
+                "Finance",
+                "Compliance",
+                "Operations",
+                "Risks",
+                "Cross-Agent Reasoning"
+            ],
+            default=["Executive Summary","Legal", "Finance", "Compliance", "Risks"]
+        )
 
-COMPLIANCE:
-{doc['compliance']}
+        # -------- Generate Report --------
+        from reports.report_generator import generate_report
 
-OPERATIONS:
-{doc['operations']}
-"""
+        report = generate_report(
+            st.session_state.documents,
+            report_tone,
+            report_focus
+        )
 
         st.download_button(
             "📄 Download TXT Report",
             report,
-            file_name="ClauseAI_Report.txt",
+            file_name="ClauseAI_Custom_Report.txt",
             mime="text/plain"
         )
+
+        st.divider()
+
+        # ===================== REPORT FEEDBACK =====================
+        st.subheader("🗣️ Report Feedback")
+
+        rating = st.radio(
+            "Was this report helpful?",
+            ["Very Helpful", "Helpful", "Needs Improvement"]
+        )
+
+        comment = st.text_area("Optional comments")
+
+        if st.button("Submit Feedback"):
+            st.success("Thank you for your feedback!")
+
 
 # ---------------- Footer ----------------
 st.divider()
