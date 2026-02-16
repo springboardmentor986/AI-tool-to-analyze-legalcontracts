@@ -30,16 +30,13 @@ if INDEX_NAME not in pc.list_indexes().names():
         name=INDEX_NAME,
         dimension=DIMENSION,
         metric="cosine",
-        spec=ServerlessSpec(
-            cloud="aws",
-            region="us-east-1"
-        )
+        spec=ServerlessSpec(cloud="aws", region="us-east-1")
     )
 
 index = pc.Index(INDEX_NAME)
 
 # --------------------------------------------------
-# STORE TEXT (THIS MUST EXIST)
+# STORE TEXT
 # --------------------------------------------------
 def store_text(text: str):
     chunks = [text[i:i + 500] for i in range(0, len(text), 500)]
@@ -48,23 +45,18 @@ def store_text(text: str):
     for i, chunk in enumerate(chunks):
         embedding = model.encode(chunk)
 
-        if len(embedding) != DIMENSION:
-            raise ValueError("Embedding dimension mismatch")
-
-        vectors.append(
-            (
-                f"chunk-{i}",
-                embedding.tolist(),
-                {"text": chunk}
-            )
-        )
+        vectors.append((
+            f"chunk-{i}",
+            embedding.tolist(),
+            {"text": chunk}
+        ))
 
     index.upsert(vectors)
 
 # --------------------------------------------------
-# RETRIEVE CONTEXT
+# RETRIEVE CONTEXT (TOP-K LIVES HERE)
 # --------------------------------------------------
-def retrieve_context(query: str, top_k: int = 3) -> str:
+def retrieve_context(query: str, top_k: int = 3):
     query_embedding = model.encode(query)
 
     res = index.query(
@@ -73,7 +65,9 @@ def retrieve_context(query: str, top_k: int = 3) -> str:
         include_metadata=True
     )
 
-    return " ".join(
-        match["metadata"]["text"]
-        for match in res["matches"]
-    )
+    chunks = [m["metadata"]["text"] for m in res["matches"]]
+
+    return {
+        "context": " ".join(chunks),
+        "chunks": chunks
+    }
