@@ -1,0 +1,28 @@
+SERVICE AGREEMENT
+
+This Service Agreement ("Agreement") is entered into as of January 1, 2025 between Provider and Client.
+
+1. SERVICES
+Provider shall provide software development services including:
+- Custom application development
+- System integration  
+- Technical support
+
+2. PAYMENT TERMS
+Client shall pay Provider as follows:
+- 50% upon contract signing
+- 30% upon project completion
+- 20% upon final delivery
+Payment is due within 30 days from invoice date. Late payments incur 1.5% monthly penalty.
+
+3. CONFIDENTIALITY
+Both parties agree to maintain strict confidentiality of all proprietary information for 3 years after termination.
+
+4. LIMITATION OF LIABILITY
+Neither party liable for indirect, incidental, or consequential damages except for gross negligence or willful misconduct.
+
+5. TERMINATION
+This agreement may be terminated by either party with 30 days written notice. Upon termination, all work product shall be delivered to Client.
+
+6. GOVERNING LAW
+This agreement governed by applicable laws and subject to jurisdiction of the courts.
