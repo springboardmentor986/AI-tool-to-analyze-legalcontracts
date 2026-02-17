@@ -1,0 +1,396 @@
+.risk-scores-container {
+  margin: 2rem 0;
+}
+
+.section-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-primary);
+  font-size: 1.8rem;
+  margin: 0 0 2rem 0;
+}
+
+.section-header h2 svg {
+  color: var(--primary);
+}
+
+/* Overall Risk Card */
+.overall-risk-card {
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+  border-radius: 16px;
+  padding: 2.5rem;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.overall-risk-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+  animation: pulse 4s ease-in-out infinite;
+}
+
+.overall-risk-card.critical {
+  background: linear-gradient(135deg, #991b1b 0%, #dc2626 100%);
+}
+
+.overall-risk-card.high {
+  background: linear-gradient(135deg, #c2410c 0%, #f59e0b 100%);
+}
+
+.overall-risk-card.medium {
+  background: linear-gradient(135deg, #ca8a04 0%, #fbbf24 100%);
+}
+
+.overall-risk-card.low {
+  background: linear-gradient(135deg, #047857 0%, #10b981 100%);
+}
+
+.risk-icon {
+  color: white;
+  opacity: 0.9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+.risk-score-main {
+  color: white;
+  position: relative;
+  z-index: 1;
+}
+
+.score-label {
+  font-size: 0.9rem;
+  opacity: 0.9;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 0.5rem;
+}
+
+.score-display {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.score-number {
+  font-size: 4.5rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.score-max {
+  font-size: 2rem;
+  opacity: 0.7;
+}
+
+.risk-level-badge {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  letter-spacing: 1px;
+}
+
+.risk-description {
+  grid-column: 1 / -1;
+  color: white;
+  opacity: 0.95;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  position: relative;
+  z-index: 1;
+}
+
+/* Domain Scores Section */
+.domain-scores-section {
+  margin: 2rem 0;
+}
+
+.domain-scores-section h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-primary);
+  font-size: 1.4rem;
+  margin-bottom: 1.5rem;
+}
+
+.domain-scores-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.domain-score-card {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: 2px solid transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+.domain-score-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.domain-score-card.critical {
+  border-color: var(--critical);
+}
+
+.domain-score-card.high {
+  border-color: var(--high);
+}
+
+.domain-score-card.medium {
+  border-color: var(--medium);
+}
+
+.domain-score-card.low {
+  border-color: var(--low);
+}
+
+.domain-icon {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.domain-content {
+  margin-bottom: 1rem;
+}
+
+.domain-name {
+  color: var(--text-primary);
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.domain-score {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+}
+
+.domain-description {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.score-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--bg-secondary);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.score-fill {
+  height: 100%;
+  transition: width 0.8s ease;
+  border-radius: 4px;
+}
+
+/* Severity Breakdown */
+.severity-breakdown-section {
+  margin: 2rem 0;
+}
+
+.severity-breakdown-section h3 {
+  color: var(--text-primary);
+  font-size: 1.4rem;
+  margin-bottom: 1.5rem;
+}
+
+.severity-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+}
+
+.severity-stat {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  border-left: 4px solid;
+  transition: transform 0.2s;
+}
+
+.severity-stat:hover {
+  transform: translateX(4px);
+}
+
+.severity-stat.critical {
+  border-left-color: var(--critical);
+}
+
+.severity-stat.high {
+  border-left-color: var(--high);
+}
+
+.severity-stat.medium {
+  border-left-color: var(--medium);
+}
+
+.severity-stat.low {
+  border-left-color: var(--low);
+}
+
+.severity-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+
+.severity-stat.critical .severity-icon {
+  background: rgba(220, 38, 38, 0.1);
+  color: var(--critical);
+}
+
+.severity-stat.high .severity-icon {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--high);
+}
+
+.severity-stat.medium .severity-icon {
+  background: rgba(251, 191, 36, 0.1);
+  color: var(--medium);
+}
+
+.severity-stat.low .severity-icon {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--low);
+}
+
+.severity-content {
+  flex: 1;
+}
+
+.severity-count {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+  margin-bottom: 0.25rem;
+}
+
+.severity-label {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+/* Penalty Notice */
+.penalty-notice {
+  background: rgba(245, 158, 11, 0.1);
+  border: 2px solid var(--high);
+  border-radius: 12px;
+  padding: 1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 1.5rem 0;
+  color: var(--text-primary);
+}
+
+.penalty-notice svg {
+  color: var(--high);
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+/* Scoring Info */
+.scoring-info {
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-top: 2rem;
+}
+
+.scoring-info h4 {
+  color: var(--text-primary);
+  font-size: 1.1rem;
+  margin: 0 0 1rem 0;
+}
+
+.scoring-info ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem 0;
+}
+
+.scoring-info li {
+  color: var(--text-secondary);
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.scoring-info li:last-child {
+  border-bottom: none;
+}
+
+.scoring-note {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin: 0;
+  font-style: italic;
+}
+
+/* Animations */
+@keyframes pulse {
+  0%, 100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(5%, 5%);
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .overall-risk-card {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+
+  .risk-icon {
+    justify-content: center;
+  }
+
+  .score-display {
+    justify-content: center;
+  }
+
+  .domain-scores-grid,
+  .severity-grid {
+    grid-template-columns: 1fr;
+  }
+}
