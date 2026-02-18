@@ -4,113 +4,126 @@ from streamlit_option_menu import option_menu
 # --- MODULE IMPORTS ---
 from utils.styles import apply_custom_css, render_3d_cube
 from utils.export_utils import generate_pdf
-# UPDATE: Added ai_consultant to imports
-from views import main_console, analytics, vault, architecture, oracle, ai_consultant
+from utils import db
+from views import main_console, analytics, vault, architecture, oracle, ai_consultant, auth, landing, payment
 
 # 1. PAGE CONFIG
 st.set_page_config(page_title="ClauseAI Ultimate", layout="wide", page_icon="✨")
 
-# --- 🚨 SAFE CSS FIX: TARGET ONLY THE TOP-LEFT "OPEN" BUTTON 🚨 ---
-st.markdown("""
-    <style>
-        /* ------------------------------------------------------------------- */
-        /* 1. FIX THE "OPEN" BUTTON (Top Left)                               */
-        /* This targets ONLY the toggle on the main screen.                  */
-        /* ------------------------------------------------------------------- */
-        
-        /* Target the container for the collapsed sidebar control */
-        [data-testid="stSidebarCollapsedControl"] {
-            background-color: transparent !important;
-            padding: 5px !important;
-        }
-        
-        /* CRUSH the broken icon text (keyboard_double_arrow_right) */
-        [data-testid="stSidebarCollapsedControl"] button,
-        [data-testid="stSidebarCollapsedControl"] span,
-        [data-testid="stSidebarCollapsedControl"] svg {
-            font-size: 0px !important; 
-            color: transparent !important;
-            width: auto !important;
-        }
+# 2. INIT DATABASE & STATE
+db.init_db()
 
-        /* REBUILD the button with "OPEN" text */
-        [data-testid="stSidebarCollapsedControl"] button::after {
-            content: "OPEN SIDEBAR";
-            font-size: 14px !important;
-            color: #00f2ff !important;
-            font-weight: bold;
-            background: rgba(14, 17, 23, 0.9);
-            border: 1px solid #00f2ff;
-            padding: 5px 15px;
-            border-radius: 5px;
-            display: block;
-            visibility: visible;
-            white-space: nowrap;
-        }
-    </style>
-""", unsafe_allow_html=True)
-# ------------------------------------------------------------------------
-
-# 2. APPLY CSS
-apply_custom_css()
-
-# 3. INITIALIZE STATE
+if 'authenticated' not in st.session_state: st.session_state['authenticated'] = False
+if 'page' not in st.session_state: st.session_state['page'] = 'landing' # landing, login, signup, app
+if 'plan' not in st.session_state: st.session_state['plan'] = 'Free'
 if 'results' not in st.session_state: st.session_state['results'] = None
-if 'doc_len' not in st.session_state: st.session_state['doc_len'] = 0
 if 'chat_history' not in st.session_state:
     st.session_state['chat_history'] = {"legal": [], "finance": [], "compliance": [], "operations": []}
 
-# 4. SIDEBAR
-with st.sidebar:
-    render_3d_cube()
-    
-    st.markdown("""
-    <div style="text-align: center; margin-bottom: 20px;">
-        <h2 style="color: #00f2ff; margin:0; font-size: 26px;">CLAUSE.AI</h2>
-        <p style="font-size: 10px; color: #64748b; margin:0; letter-spacing: 2px;">NEURAL AUDIT SYSTEM</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # NAVIGATION MENU (Updated with AI Consultant)
-    selected = option_menu(
-        menu_title=None,
-        options=["Main Console", "The Oracle", "AI Consultant", "Data Analytics", "The Vault", "Neural Architecture"],
-        icons=["hdd-network", "chat-dots-fill", "headset", "bar-chart-line-fill", "archive-fill", "diagram-3-fill"], 
-        default_index=0,
-        styles={
-            "container": {"padding": "0!important", "background-color": "transparent"},
-            "icon": {"color": "#00f2ff", "font-size": "16px"}, 
-            "nav-link": {"font-size": "14px", "color": "#94a3b8"},
-            "nav-link-selected": {"background": "rgba(0, 242, 255, 0.1)", "color": "#fff", "border-left": "4px solid #00f2ff"},
+# 3. GLOBAL STYLES (Footer & Sidebar Fix)
+st.markdown("""
+    <style>
+        [data-testid="stSidebarCollapsedControl"] { background-color: transparent !important; padding: 5px !important; }
+        [data-testid="stSidebarCollapsedControl"] button { font-size: 0px !important; color: transparent !important; }
+        [data-testid="stSidebarCollapsedControl"] button::after {
+            content: "MENU"; font-size: 14px !important; color: #00f2ff !important; font-weight: bold;
+            background: rgba(14, 17, 23, 0.9); border: 1px solid #00f2ff; padding: 5px 15px; border-radius: 5px;
         }
-    )
-    
-    st.markdown("---")
-    
-    # MANUAL DOWNLOAD ONLY
-    if st.session_state['results']:
-        pdf_bytes = generate_pdf(st.session_state['results'])
-        st.download_button(
-            label="📄 Download Report",
-            data=pdf_bytes,
-            file_name="ClauseAI_Audit.pdf",
-            mime="application/pdf",
-            use_container_width=True,
-            key="pdf_download_btn"
-        )
+        .footer {
+            position: fixed; left: 0; bottom: 0; width: 100%; background-color: #0e1117;
+            color: #64748b; text-align: center; padding: 10px; font-size: 12px;
+            border-top: 1px solid #1e293b; z-index: 1000;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
-# 5. PAGE ROUTING
-if selected == "Main Console":
-    main_console.show()
-elif selected == "The Oracle":
-    oracle.show()
-# --- NEW ROUTE ---
-elif selected == "AI Consultant":
-    ai_consultant.show()
-# -----------------
-elif selected == "Data Analytics":
-    analytics.show()
-elif selected == "The Vault":
-    vault.show()
-elif selected == "Neural Architecture":
-    architecture.show()
+# ==============================================================================
+# 🎮 ROUTING LOGIC
+# ==============================================================================
+
+if not st.session_state['authenticated']:
+    # --- PUBLIC PAGES ---
+    if st.session_state['page'] == 'landing':
+        landing.show()
+    elif st.session_state['page'] == 'login':
+        if st.button("← Back"): st.session_state['page'] = 'landing'; st.rerun()
+        auth.login_form()
+    elif st.session_state['page'] == 'signup':
+        if st.button("← Back"): st.session_state['page'] = 'landing'; st.rerun()
+        auth.signup_form()
+
+else:
+    # --- MAIN APPLICATION (LOGGED IN) ---
+    apply_custom_css()
+    
+    with st.sidebar:
+        render_3d_cube()
+        st.markdown("""
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h2 style="color: #00f2ff; margin:0; font-size: 26px;">CLAUSE.AI</h2>
+            <div style="background: #1e293b; padding: 5px; border-radius: 5px; margin-top: 10px; font-size: 12px; border: 1px solid #334155;">
+                👤 <b>{}</b> | Plan: <span style="color: #00f2ff;">{}</span>
+            </div>
+        </div>
+        """.format(st.session_state['username'], st.session_state['plan']), unsafe_allow_html=True)
+        
+        # NAVIGATION
+        selected = option_menu(
+            menu_title=None,
+            options=["Main Console", "The Oracle", "AI Consultant", "Data Analytics", "The Vault", "Neural Architecture", "Billing & Plans"],
+            icons=["hdd-network", "chat-dots-fill", "headset", "bar-chart-line-fill", "archive-fill", "diagram-3-fill", "credit-card-2-front"], 
+            default_index=0,
+            styles={
+                "container": {"padding": "0!important", "background-color": "transparent"},
+                "icon": {"color": "#00f2ff", "font-size": "16px"}, 
+                "nav-link": {"font-size": "14px", "color": "#94a3b8"},
+                "nav-link-selected": {"background": "rgba(0, 242, 255, 0.1)", "color": "#fff", "border-left": "4px solid #00f2ff"},
+            }
+        )
+        
+        st.markdown("---")
+        if st.button("🔒 Logout", use_container_width=True):
+            st.session_state['authenticated'] = False
+            st.session_state['page'] = 'landing'
+            st.rerun()
+
+    # --- PAGE RENDERING & FEATURE LOCKING ---
+    plan = st.session_state['plan']
+    
+    if selected == "Main Console":
+        main_console.show()
+        
+    elif selected == "The Oracle":
+        oracle.show()
+        
+    elif selected == "AI Consultant":
+        # LOCK THIS FEATURE FOR FREE USERS
+        if plan == 'Free':
+            st.error("🔒 This feature is available on the PRO Plan.")
+            st.markdown("Upgrade in **Billing & Plans** to unlock the AI Legal Avatar.")
+            st.image("https://cdn.dribbble.com/users/32512/screenshots/5668419/ai-assistant-2.gif", width=300)
+        else:
+            ai_consultant.show()
+            
+    elif selected == "Data Analytics":
+        analytics.show()
+        
+    elif selected == "The Vault":
+        # LOCK THIS FEATURE FOR FREE USERS
+        if plan == 'Free':
+            st.error("🔒 The Vault (Unlimited Storage) is for PRO users only.")
+        else:
+            vault.show()
+            
+    elif selected == "Neural Architecture":
+        architecture.show()
+        
+    elif selected == "Billing & Plans":
+        payment.show()
+
+# FOOTER
+st.markdown("""
+    <div class="footer">
+        <p>© 2026 ClauseAI Inc. | Designed by <b>ARULDASS</b> | <span style="color: #00f2ff;">Springboard Internship Build v1</span></p>
+    </div>
+""", unsafe_allow_html=True)
