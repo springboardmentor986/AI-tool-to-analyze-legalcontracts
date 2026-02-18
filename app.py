@@ -4,11 +4,52 @@ from streamlit_option_menu import option_menu
 # --- MODULE IMPORTS ---
 from utils.styles import apply_custom_css, render_3d_cube
 from utils.export_utils import generate_pdf
-# Import the new view
-from views import main_console, analytics, vault, architecture, oracle
+# UPDATE: Added ai_consultant to imports
+from views import main_console, analytics, vault, architecture, oracle, ai_consultant
 
 # 1. PAGE CONFIG
 st.set_page_config(page_title="ClauseAI Ultimate", layout="wide", page_icon="✨")
+
+# --- 🚨 SAFE CSS FIX: TARGET ONLY THE TOP-LEFT "OPEN" BUTTON 🚨 ---
+st.markdown("""
+    <style>
+        /* ------------------------------------------------------------------- */
+        /* 1. FIX THE "OPEN" BUTTON (Top Left)                               */
+        /* This targets ONLY the toggle on the main screen.                  */
+        /* ------------------------------------------------------------------- */
+        
+        /* Target the container for the collapsed sidebar control */
+        [data-testid="stSidebarCollapsedControl"] {
+            background-color: transparent !important;
+            padding: 5px !important;
+        }
+        
+        /* CRUSH the broken icon text (keyboard_double_arrow_right) */
+        [data-testid="stSidebarCollapsedControl"] button,
+        [data-testid="stSidebarCollapsedControl"] span,
+        [data-testid="stSidebarCollapsedControl"] svg {
+            font-size: 0px !important; 
+            color: transparent !important;
+            width: auto !important;
+        }
+
+        /* REBUILD the button with "OPEN" text */
+        [data-testid="stSidebarCollapsedControl"] button::after {
+            content: "OPEN SIDEBAR";
+            font-size: 14px !important;
+            color: #00f2ff !important;
+            font-weight: bold;
+            background: rgba(14, 17, 23, 0.9);
+            border: 1px solid #00f2ff;
+            padding: 5px 15px;
+            border-radius: 5px;
+            display: block;
+            visibility: visible;
+            white-space: nowrap;
+        }
+    </style>
+""", unsafe_allow_html=True)
+# ------------------------------------------------------------------------
 
 # 2. APPLY CSS
 apply_custom_css()
@@ -30,11 +71,11 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
     
-    # ADDED "THE ORACLE" TO THE MENU
+    # NAVIGATION MENU (Updated with AI Consultant)
     selected = option_menu(
         menu_title=None,
-        options=["Main Console", "The Oracle", "Data Analytics", "The Vault", "Neural Architecture"],
-        icons=["hdd-network", "chat-dots-fill", "bar-chart-line-fill", "archive-fill", "diagram-3-fill"], 
+        options=["Main Console", "The Oracle", "AI Consultant", "Data Analytics", "The Vault", "Neural Architecture"],
+        icons=["hdd-network", "chat-dots-fill", "headset", "bar-chart-line-fill", "archive-fill", "diagram-3-fill"], 
         default_index=0,
         styles={
             "container": {"padding": "0!important", "background-color": "transparent"},
@@ -62,7 +103,11 @@ with st.sidebar:
 if selected == "Main Console":
     main_console.show()
 elif selected == "The Oracle":
-    oracle.show()  # <--- Loads the new full-page chat
+    oracle.show()
+# --- NEW ROUTE ---
+elif selected == "AI Consultant":
+    ai_consultant.show()
+# -----------------
 elif selected == "Data Analytics":
     analytics.show()
 elif selected == "The Vault":

@@ -14,3 +14,9 @@ streamlit-extras
 plotly
 fpdf
 faiss-cpu
+reportlab
+edge-tts
+asyncio
+SpeechRecognition
+pyaudio
+pipwin

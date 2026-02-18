@@ -99,13 +99,28 @@ def get_index():
 def get_pinecone_client():
     return get_index()
 
-def save_analysis_state(filename, results, doc_len):
+# ... imports remain the same ...
+
+def save_analysis_state(filename, results, doc_len, config=None): # <--- ADDED config param
+    """
+    Saves the Analysis AND the Configuration (Active Agents) to Pinecone.
+    """
     index = get_index()
     if not index or not embeddings: return False
 
     try:
         scan_id = str(uuid.uuid4())
-        payload = json.dumps(results)[:38000] 
+        
+        # 1. Serialize Results
+        payload = json.dumps(results)[:35000] # Slightly reduced to make room for config
+        
+        # 2. Serialize Config (Tone, Active Agents)
+        # If no config provided, save a default one
+        if config is None:
+            config = {"tone": "Standard", "agents": ["Legal", "Finance", "Compliance", "Operations"]}
+        config_payload = json.dumps(config)
+
+        # 3. Create Vector
         vector = embeddings.embed_query(filename)
         
         metadata = {
@@ -113,7 +128,8 @@ def save_analysis_state(filename, results, doc_len):
             "filename": filename,
             "doc_len": doc_len,
             "date": time.strftime("%Y-%m-%d"),
-            "analysis_json": payload
+            "analysis_json": payload,
+            "config_json": config_payload # <--- SAVING THE CONFIG
         }
 
         index.upsert(vectors=[(scan_id, vector, metadata)])
@@ -121,6 +137,8 @@ def save_analysis_state(filename, results, doc_len):
     except Exception as e:
         st.error(f"Pinecone Save Failed: {e}")
         return False
+
+# ... search_archives function remains the same ...
 
 def search_archives(query):
     index = get_index()
