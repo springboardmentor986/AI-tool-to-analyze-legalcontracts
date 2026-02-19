@@ -24,11 +24,13 @@ Constraints:
 - Format: "Issue Description (Risk Level) [Source: Page X]"
 - ALWAYS cite the source page for every claim using the provided [Source: Page X] tags.
 - STRICTLY LIMIT SCOPE: Analyze ONLY issues related to your specific Role and Task. Do NOT generate a general summary or analyze other domains.
+- IGNORE any "Target Sections" or "Report Structure" instructions in the User Instructions; those are for the final report compiler, not for you.
+- Focus ONLY on your domain expertise ({role}).
 
 Contract Text:
 {contract_text}
 
-Additional User Instructions:
+Additional User Instructions (Apply ONLY if relevant to {role}):
 {user_instructions}
 """
 

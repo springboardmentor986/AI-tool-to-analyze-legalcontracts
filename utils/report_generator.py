@@ -106,16 +106,44 @@ def generate_pdf(report_text: str) -> bytes:
     """
     pdf = ClauseAIPDF()
     pdf.add_page()
+    
+    # Title Page Idea or just nice header? Stick to chapter body for now but cleaner
     pdf.chapter_body(report_text)
     return bytes(pdf.output())
 
+def add_markdown_paragraph(doc, text, style=None):
+    """
+    Helper to add a paragraph with bold (**text**) support to a python-docx Document.
+    """
+    p = doc.add_paragraph(style=style)
+    
+    if "**" not in text:
+        p.add_run(text)
+        return
+
+    parts = text.split("**")
+    for i, part in enumerate(parts):
+        run = p.add_run(part)
+        if i % 2 == 1: # Odd indices are between ** **, so make them bold
+            run.bold = True
+
 def generate_word(report_text: str) -> bytes:
     """
-    Generates a Word (DOCX) file from the given report text.
+    Generates a Word (DOCX) file from the given report text with formatting.
     """
     doc = Document()
     doc.add_heading('ClauseAI Analysis Report', 0)
     
+    # Common cleanup for generic text artifacts
+    replacements = {
+        "’": "'", "‘": "'", "“": '"', "”": '"', "–": "-", "—": "-",
+        "…": "...", "₹": "Rs.", "€": "EUR", "£": "GBP",
+        "✅": "[PASS]", "⚠️": "[RISK]", "❌": "[FAIL]",
+        "●": "-", "•": "-"
+    }
+    for char, replacement in replacements.items():
+        report_text = report_text.replace(char, replacement)
+
     # Simple markdown parsing for Word
     for line in report_text.split('\n'):
         line = line.strip()
@@ -129,9 +157,11 @@ def generate_word(report_text: str) -> bytes:
         elif line.startswith('### '):
             doc.add_heading(line[4:], level=3)
         elif line.startswith('- ') or line.startswith('* '):
-            p = doc.add_paragraph(line[2:], style='List Bullet')
+            # Bullet point with bold support
+            add_markdown_paragraph(doc, line[2:], style='List Bullet')
         else:
-            doc.add_paragraph(line)
+            # Standard paragraph with bold support
+            add_markdown_paragraph(doc, line)
             
     buffer = io.BytesIO()
     doc.save(buffer)

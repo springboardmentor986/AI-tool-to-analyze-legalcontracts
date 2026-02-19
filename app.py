@@ -8,9 +8,11 @@ import time
 import re
 import asyncio
 import sys
+import uuid
 from ingestion.file_loader import text_extractor
 from orchestration.graph import build_clauseai_graph
 from utils.history_manager import save_to_history, load_history
+from utils.ui_components import display_lottie, inject_custom_css
 
 # ---------- PAGE CONFIG ----------
 st.set_page_config(
@@ -20,13 +22,11 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ---------- LOAD CSS ----------
-def local_css(file_name):
-    with open(file_name) as f:
-        st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
-
 try:
-    local_css("assets/style.css")
+    # Use V3 Cyber CSS with cache buster
+    with open("assets/style.css") as f:
+        st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
+    inject_custom_css() 
 except:
     pass # Fallback if CSS not found
 
@@ -43,13 +43,22 @@ if "included_sections" not in st.session_state:
 # ---------- SIDEBAR NAVIGATION ----------
 with st.sidebar:
     st.markdown("## ClauseAI ⚡")
+    
+    # Handle Programmatic Navigation (Must be done before widget render)
+    default_index = 0
+    if st.session_state.get("force_analysis_view", False):
+        default_index = 0
+        if "main_menu" in st.session_state:
+            del st.session_state["main_menu"] # Reset widget state
+        st.session_state.force_analysis_view = False # Reset flag
+
     # Navbar
     selected_page = option_menu(
         menu_title=None,
         options=["Analysis", "History"],
         icons=["search", "clock-history"],
         menu_icon="cast",
-        default_index=0,
+        default_index=default_index,
         key="main_menu", # Add key to control state
         styles={
             "container": {"background-color": "transparent"},
@@ -71,20 +80,34 @@ with st.sidebar:
 # ---------- MAIN CONTENT : ANALYSIS PAGE ----------
 if selected_page == "Analysis":
     
-    # Hero Section
-    col_hero_text, col_hero_img = st.columns([3, 1])
+    # Hero Section - Cyber / Tech Theme
+    col_hero_text, col_hero_img = st.columns([3, 2]) 
     with col_hero_text:
-        st.markdown("# Intelligent Contract Analysis")
-        st.markdown("#### Transform legal documents into actionable strategic insights with Multi-Agent AI.")
+        st.markdown('<h1 style="margin-bottom: 0px;">INTELLIGENT<br/>CONTRACT ANALYSIS</h1>', unsafe_allow_html=True)
+        st.markdown('<p style="color: #94a3b8; font-size: 1.2rem; margin-top: 10px;">DEPLOYING <span style="color: #10b981; font-weight: bold; font-family: monospace;">MULTI-AGENT.AI_SYSTEMS</span> TO DECODE LEGAL VECTORS.</p>', unsafe_allow_html=True)
+        
+        add_vertical_space(1)
+        
+        # Tech Badges
+        st.markdown("""
+        <div style="display: flex; gap: 15px;">
+            <div class="badge-tech" style="border: 1px solid #10b981; padding: 5px 15px; color: #10b981; font-family: monospace; font-size: 0.9rem; border-radius: 4px;">STATUS: ONLINE</div>
+            <div class="badge-tech" style="border: 1px solid #22d3ee; padding: 5px 15px; color: #22d3ee; font-family: monospace; font-size: 0.9rem; border-radius: 4px;">V2.0.1 INITIALIZED</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col_hero_img:
+        # "Digital Scan/Shield" Animation
+        display_lottie("https://assets9.lottiefiles.com/packages/lf20_3rwasyjy.json", height=280, key="hero_lottie_cyber")
     
-    add_vertical_space(2)
+    add_vertical_space(3)
 
     # Main Input Card
     with st.container():
         st.markdown('<div class="css-card">', unsafe_allow_html=True)
         
-        st.markdown("### Upload your Legal documents")
-        st.caption("or copy paste the document text here")
+        st.markdown("### 📂 INGEST DOCUMENTATION")
+        st.caption("SELECT INPUT VECTOR OR INJECT TEXT STREAM")
         
         # Input Mode Selector
         input_mode = st.radio("Input Mode", ["Browse Files", "Paste Text"], horizontal=True, label_visibility="collapsed")
@@ -151,7 +174,7 @@ if selected_page == "Analysis":
                 extracted = text_extractor(file)
                 if extracted:
                     all_extracted_data.extend(extracted)
-                    contract_text += "\n".join([item["text"] for item in extracted]) + "\n\n"
+                    contract_text += "\\n".join([item["text"] for item in extracted]) + "\\n\\n"
         except Exception as e:
             st.error(f"Error reading file: {e}")
     elif pasted_text:
@@ -167,17 +190,25 @@ if selected_page == "Analysis":
     if analyze_btn:
         status_placeholder = st.empty()
         
+        # Clear previous report cache
+        if "pdf_bytes" in st.session_state: del st.session_state.pdf_bytes
+        if "docx_bytes" in st.session_state: del st.session_state.docx_bytes
+        
         with status_placeholder.container():
             st.markdown("### 🔄 Processing...")
-            progress_bar = st.progress(0)
+            col_load1, col_load2 = st.columns([1, 4])
+            with col_load1:
+                display_lottie("https://assets9.lottiefiles.com/packages/lf20_p8bfn5to.json", height=100, key="loading_lottie")
+            with col_load2:
+                progress_bar = st.progress(0)
             
             try:
                 # 1. Setup
                 final_instructions = (
-                    f"User Request: {st.session_state.get('user_instructions_input', 'None')}\n"
-                    f"Report Tone: {st.session_state.report_tone}\n"
-                    f"Focus Area: {st.session_state.focus_area}\n"
-                    f"Report Length: {st.session_state.report_length}\n"
+                    f"User Request: {st.session_state.get('user_instructions_input', 'None')}\\n"
+                    f"Report Tone: {st.session_state.report_tone}\\n"
+                    f"Focus Area: {st.session_state.focus_area}\\n"
+                    f"Report Length: {st.session_state.report_length}\\n"
                     f"Target Sections: {', '.join(st.session_state.included_sections)}"
                 )
                 graph = build_clauseai_graph()
@@ -203,9 +234,12 @@ if selected_page == "Analysis":
                 st.session_state.analysis_result = result
                 
                 # Check for Risk Level
-                risk_match = re.search(r"Risk Level:?\s*(\w+)", result.get("final_report", ""), re.IGNORECASE)
+                risk_match = re.search(r"Risk Level:?\\s*(\\w+)", result.get("final_report", ""), re.IGNORECASE)
                 risk_level = risk_match.group(1).upper() if risk_match else "N/A"
                 
+                # Generate unique View ID for this report session (fixes auto-download)
+                st.session_state.view_id = str(uuid.uuid4())
+
                 # SAVE TO HISTORY
                 save_to_history(
                     contract_text=contract_text,
@@ -227,7 +261,7 @@ if selected_page == "Analysis":
         final_report = result.get("final_report", "")
         
         # Parse Risk (Again for display if needed, but result has it)
-        risk_match = re.search(r"Risk Level:?\s*(\w+)", final_report, re.IGNORECASE)
+        risk_match = re.search(r"Risk Level:?\\s*(\\w+)", final_report, re.IGNORECASE)
         risk_level = risk_match.group(1).upper() if risk_match else "N/A"
         
         # 1. Executive Dashboard
@@ -246,7 +280,7 @@ if selected_page == "Analysis":
         # 2. Executive Summary Card
         st.markdown('<div class="css-card">', unsafe_allow_html=True)
         st.markdown("#### 📌 Executive Summary")
-        exec_summary_match = re.search(r"(?:#+)?\s*1\.\s*Executive Summary(.*?)(?:#+)?\s*2\.", final_report, re.DOTALL | re.IGNORECASE)
+        exec_summary_match = re.search(r"(?:#+)?\\s*1\\.\\s*Executive Summary(.*?)(?:#+)?\\s*2\\.", final_report, re.DOTALL | re.IGNORECASE)
         summary_text = exec_summary_match.group(1).strip() if exec_summary_match else "See full report details."
         st.markdown(summary_text)
         st.markdown('</div>', unsafe_allow_html=True)
@@ -266,20 +300,39 @@ if selected_page == "Analysis":
         # 4. Export Actions
         st.markdown("### 📥 Export Report")
         
-        # Defer generation to avoid auto-download/performance hit
-        if st.button("📦 Generate PDF & Word Reports"):
-            with st.spinner("Generating files..."):
+        # Generate reports if not already in session state
+        if "pdf_bytes" not in st.session_state or "docx_bytes" not in st.session_state:
+             with st.spinner("Preparing export files..."):
                 from utils.report_generator import generate_pdf, generate_word
-                
-                # Generate files only on demand
-                pdf_bytes = generate_pdf(final_report)
-                docx_bytes = generate_word(final_report)
-                
-                col_ex1, col_ex2 = st.columns(2)
-                with col_ex1:
-                    st.download_button("📄 Download PDF", pdf_bytes, "report.pdf", "application/pdf", use_container_width=True)
-                with col_ex2:
-                    st.download_button("📝 Download Word", docx_bytes, "report.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", use_container_width=True)
+                st.session_state.pdf_bytes = generate_pdf(final_report)
+                st.session_state.docx_bytes = generate_word(final_report)
+        
+        # Display buttons side-by-side
+        view_id = st.session_state.get("view_id", f"gen_{uuid.uuid4()}")
+        
+        add_vertical_space(1)
+        
+        col_ex1, col_ex2 = st.columns(2)
+        with col_ex1:
+            st.download_button(
+                label="📄 Download PDF", 
+                data=st.session_state.pdf_bytes, 
+                file_name="clauseai_report.pdf", 
+                mime="application/pdf", 
+                use_container_width=True, 
+                key=f"safe_dl_pdf_{view_id}"
+            )
+        with col_ex2:
+            st.download_button(
+                label="📝 Download Word", 
+                data=st.session_state.docx_bytes, 
+                file_name="clauseai_report.docx", 
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", 
+                use_container_width=True, 
+                key=f"safe_dl_word_{view_id}"
+            )
+
+
 
 # ---------- HISTORY PAGE ----------
 elif selected_page == "History":
@@ -300,8 +353,15 @@ elif selected_page == "History":
                         "final_report": item["final_report"],
                         "agent_outputs": item["agent_outputs"]
                     }
-                    # Force switch to Analysis tab
-                    st.session_state["main_menu"] = "Analysis" 
+                    # Clear report cache to ensure regeneration for this history item
+                    if "pdf_bytes" in st.session_state: del st.session_state.pdf_bytes
+                    if "docx_bytes" in st.session_state: del st.session_state.docx_bytes
+                    
+                    # Set unique View ID for download buttons (Must be fresh UUID every view!)
+                    st.session_state.view_id = str(uuid.uuid4())
+
+                    # Set flag to force navigation on rerun
+                    st.session_state.force_analysis_view = True
                     st.rerun()
                     
                 st.divider()

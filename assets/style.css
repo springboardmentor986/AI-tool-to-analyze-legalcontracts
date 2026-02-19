@@ -1,0 +1,248 @@
+/* Google Fonts Import */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
+
+/* Global Styles */
+body {
+    font-family: 'Outfit', sans-serif !important;
+    color: #e2e8f0;
+}
+
+/* Hide Default Streamlit Elements */
+header[data-testid="stHeader"],
+footer {
+    display: none;
+}
+
+/* 1. TECH GRID BACKGROUND */
+.stApp {
+    background-color: #020617 !important;
+    /* Deep Slate */
+    background-image:
+        radial-gradient(#1e293b 1px, transparent 1px),
+        radial-gradient(#1e293b 1px, transparent 1px);
+    background-size: 40px 40px;
+    background-position: 0 0, 20px 20px;
+    animation: moveGrid 60s linear infinite;
+}
+
+@keyframes moveGrid {
+    0% {
+        background-position: 0 0, 20px 20px;
+    }
+
+    100% {
+        background-position: 0 1000px, 20px 1020px;
+    }
+}
+
+/* Sidebar Styling */
+section[data-testid="stSidebar"] {
+    background-color: #0f172a !important;
+    border-right: 1px solid #1e293b;
+}
+
+/* 2. NEO-BRUTALISM / TECH CARDS */
+.css-card {
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid #10b981;
+    /* Emerald Border */
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.1);
+    border-radius: 4px;
+    /* Sharper corners */
+    padding: 25px;
+    margin-bottom: 25px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    animation: slideInRight 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+.css-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: #10b981;
+    /* Emerald Accent Line */
+    transition: width 0.3s ease;
+}
+
+/* HOVER: Card Glow & Border Expand (Forced) */
+.css-card:hover {
+    transform: translateX(5px) scale(1.01) !important;
+    box-shadow: 0 0 30px rgba(16, 185, 129, 0.3) !important;
+    border-color: #34d399 !important;
+    z-index: 10;
+}
+
+.css-card:hover::before {
+    width: 8px !important;
+    box-shadow: 0 0 15px #10b981;
+}
+
+/* Badge Hover Effects */
+.badge-tech {
+    transition: all 0.3s ease;
+    cursor: default;
+}
+
+.badge-tech:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4);
+    background: rgba(16, 185, 129, 0.2) !important;
+    border-color: #34d399 !important;
+}
+
+@keyframes slideInRight {
+    0% {
+        transform: translateX(50px);
+        opacity: 0;
+    }
+
+    100% {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Titles & Headers */
+h1,
+h2,
+h3 {
+    color: #f1f5f9 !important;
+    font-weight: 700 !important;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: text-shadow 0.3s ease;
+}
+
+h1 {
+    font-size: 3.5rem !important;
+    background: linear-gradient(90deg, #10b981, #22d3ee);
+    /* Emerald -> Cyan */
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+}
+
+/* HOVER: Title Glitch / Intensify */
+h1:hover {
+    text-shadow: 2px 2px 0px #064e3b, -2px -2px 0px #22d3ee;
+    filter: brightness(1.2);
+}
+
+/* 3. BUTTONS: Cyberpunk Style */
+.stButton>button[kind="primary"] {
+    background: #10b981 !important;
+    color: #020617 !important;
+    border: none;
+    border-radius: 2px !important;
+    /* Sharp */
+    font-weight: 800 !important;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.2s ease;
+    box-shadow: 4px 4px 0px #064e3b;
+    /* Hard Shadow */
+    position: relative;
+    overflow: hidden;
+}
+
+/* HOVER: Button Glitch Scanline */
+.stButton>button[kind="primary"]:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0px #22d3ee;
+    /* Blue Shadow on Hover */
+    background: #34d399 !important;
+    color: #000 !important;
+}
+
+.stButton>button[kind="primary"]::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    transition: 0.5s;
+}
+
+.stButton>button[kind="primary"]:hover::after {
+    left: 100%;
+}
+
+/* Secondary Button */
+.stButton>button[kind="secondary"] {
+    background: transparent !important;
+    border: 1px solid #10b981 !important;
+    color: #10b981 !important;
+    border-radius: 2px !important;
+    text-transform: uppercase;
+    transition: all 0.3s ease;
+}
+
+.stButton>button[kind="secondary"]:hover {
+    background: rgba(16, 185, 129, 0.1) !important;
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+    border-color: #34d399 !important;
+    color: #34d399 !important;
+}
+
+/* Input Fields */
+.stTextInput>div>div>input,
+.stTextArea>div>div>textarea {
+    background-color: #0f172a !important;
+    color: #10b981 !important;
+    /* Matrix Text Color */
+    border: 1px solid #334155 !important;
+    border-radius: 4px !important;
+    font-family: 'Consolas', 'Courier New', monospace !important;
+    transition: all 0.3s ease;
+}
+
+.stTextInput>div>div>input:focus,
+.stTextArea>div>div>textarea:focus {
+    border-color: #10b981 !important;
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.2) !important;
+    background-color: #020617 !important;
+}
+
+/* Metrics */
+[data-testid="stMetricValue"] {
+    font-family: 'Outfit', sans-serif;
+    color: #22d3ee !important;
+    /* Cyan */
+    text-shadow: 0 0 10px rgba(34, 211, 238, 0.5);
+    animation: pulse-text 2s infinite;
+    transition: transform 0.3s ease;
+}
+
+[data-testid="stMetricValue"]:hover {
+    transform: scale(1.1);
+    text-shadow: 0 0 20px rgba(34, 211, 238, 0.8);
+}
+
+@keyframes pulse-text {
+    0% {
+        opacity: 0.8;
+    }
+
+    50% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0.8;
+    }
+}
+
+[data-testid="stMetricLabel"] {
+    color: #94a3b8 !important;
+    font-size: 0.8rem !important;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
