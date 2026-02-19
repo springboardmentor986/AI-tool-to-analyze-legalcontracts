@@ -1,408 +1,313 @@
+import streamlit as st
+from streamlit_option_menu import option_menu
+from streamlit_extras.metric_cards import style_metric_cards
+from streamlit_extras.colored_header import colored_header
+from streamlit_extras.badges import badge
+from streamlit_extras.add_vertical_space import add_vertical_space
+import time
+import re
+import asyncio
+import sys
 from ingestion.file_loader import text_extractor
 from orchestration.graph import build_clauseai_graph
-import streamlit as st
+from utils.history_manager import save_to_history, load_history
 
-# ---------- Page Config ----------
+# ---------- PAGE CONFIG ----------
 st.set_page_config(
-    page_title="ClauseAI – Contract Analyzer",
+    page_title="ClauseAI – Intelligent Contract Analysis",
+    page_icon="⚖️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# ---------- Session State Initialization ----------
+# ---------- LOAD CSS ----------
+def local_css(file_name):
+    with open(file_name) as f:
+        st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
+
+try:
+    local_css("assets/style.css")
+except:
+    pass # Fallback if CSS not found
+
+# ---------- SESSION STATE ----------
 if "analysis_result" not in st.session_state:
     st.session_state.analysis_result = None
+if "report_tone" not in st.session_state: st.session_state.report_tone = "Standard Professional"
+if "focus_area" not in st.session_state: st.session_state.focus_area = "General Analysis"
+if "report_length" not in st.session_state: st.session_state.report_length = "Standard"
+if "included_sections" not in st.session_state: 
+    st.session_state.included_sections = ["Executive Summary", "Compliance Analysis", "Financial Analysis", "Legal Risks", "Operational Notes"]
 
-# ---------- Sidebar ----------
+
+# ---------- SIDEBAR NAVIGATION ----------
 with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/2620/2620601.png", width=50) # Placeholder icon
-    st.title("ClauseAI")
-    st.markdown("Automated Contract Analysis System")
-    st.divider()
-    st.info(
-        """
-        **How it works:**
-        1.  **Upload**: Submit your contract (PDF/DOCX/TXT).
-        2.  **Context**: Provide specific focus areas (optional).
-        3.  **Analysis**: Our multi-agent AI (Finance, Legal, Compliance) analyzes the document.
-        4.  **Report**: Receive a comprehensive, structured strategic report.
-        """
+    st.markdown("## ClauseAI ⚡")
+    # Navbar
+    selected_page = option_menu(
+        menu_title=None,
+        options=["Analysis", "History"],
+        icons=["search", "clock-history"],
+        menu_icon="cast",
+        default_index=0,
+        key="main_menu", # Add key to control state
+        styles={
+            "container": {"background-color": "transparent"},
+            "icon": {"color": "#818cf8", "font-size": "16px"}, 
+            "nav-link": {"font-size": "14px", "text-align": "left", "margin":"5px", "--hover-color": "#1e293b"},
+            "nav-link-selected": {"background-color": "#1e293b", "color": "#818cf8", "border-left": "3px solid #818cf8"},
+        }
     )
-    st.divider()
-    st.warning(
-        "**Disclaimer**: This tool is an AI assistant for document analysis and does not constitute professional legal advice. Always consult with a qualified attorney for final contract review."
-    )
-    st.divider()
-    st.caption("Powered by Gemini 1.5 Pro & Pinecone Vector DB")
     
-    # Session state initialization for customization is handled in main flow now
-    if "report_tone" not in st.session_state: st.session_state.report_tone = "Standard Professional"
-    if "focus_area" not in st.session_state: st.session_state.focus_area = "General Analysis"
-    if "report_length" not in st.session_state: st.session_state.report_length = "Standard"
-    if "included_sections" not in st.session_state: 
-        st.session_state.included_sections = ["Executive Summary", "Compliance Analysis", "Financial Analysis", "Legal Risks", "Operational Notes"]
+    add_vertical_space(2)
+    
+    # Global Info
+    st.info("💡 **Pro Tip**: Upload documents and use the configure button to customize your analysis.")
+    
+    add_vertical_space(10)
+    st.markdown("---")
+    st.caption("v2.0.0 | Powered by Gemini & Pinecone")
 
+# ---------- MAIN CONTENT : ANALYSIS PAGE ----------
+if selected_page == "Analysis":
+    
+    # Hero Section
+    col_hero_text, col_hero_img = st.columns([3, 1])
+    with col_hero_text:
+        st.markdown("# Intelligent Contract Analysis")
+        st.markdown("#### Transform legal documents into actionable strategic insights with Multi-Agent AI.")
+    
+    add_vertical_space(2)
 
-# ---------- Main Content ----------
-col1, col2 = st.columns([4, 1])
-with col1:
-    st.title("ClauseAI - AI Powered Legal Contract Analyzer")
-    st.markdown("### Intelligent insights for your legal documents")
-st.divider()
+    # Main Input Card
+    with st.container():
+        st.markdown('<div class="css-card">', unsafe_allow_html=True)
+        
+        st.markdown("### Upload your Legal documents")
+        st.caption("or copy paste the document text here")
+        
+        # Input Mode Selector
+        input_mode = st.radio("Input Mode", ["Browse Files", "Paste Text"], horizontal=True, label_visibility="collapsed")
 
-# ---------- Input Section ----------
-input_container = st.container()
+        # Layout: Input area + Configure button
+        col_input, col_config = st.columns([5, 1], gap="small", vertical_alignment="bottom")
+        
+        # Initialize variables to avoid NameError
+        uploaded_files = []
+        pasted_text = ""
 
-with input_container:
-    input_mode = st.radio(
-        "**Select Input Method:**",
-        ["Upload Contract File", "Paste Contract Text"],
-        horizontal=True
-    )
+        with col_input:
+            if input_mode == "Browse Files":
+                st.markdown("Supported: PDF, DOCX, TXT (Max 5)")
+                uploaded_files = st.file_uploader(
+                    "Upload files", 
+                    type=["pdf", "docx", "txt"], 
+                    accept_multiple_files=True,
+                    label_visibility="collapsed"
+                )
+                
+                if len(uploaded_files) > 5:
+                    st.error("⚠️ Maximum 5 files allowed. Please remove some files.")
+                    uploaded_files = [] # Prevent processing
 
-    contract_text = ""
-
-    if input_mode == "Upload Contract File":
-        uploaded_files = st.file_uploader(
-            "Upload contract file(s)",
-            type=["pdf", "docx", "txt"],
-            help="Supported formats: PDF, DOCX, TXT. Max 5 files.",
-            accept_multiple_files=True
-        )
-
-        if uploaded_files:
-            if len(uploaded_files) > 5:
-                st.error("⚠️ Maximum limit is 5 files.")
             else:
-                try:
-                    all_text_parts = []
-                    all_extracted_data = []
+                pasted_text = st.text_area("Contract Text", height=200, placeholder="Paste contract text here...", label_visibility="collapsed")
 
-                    for file in uploaded_files:
-                        extracted_list = text_extractor(file)
-                        if extracted_list:
-                            all_extracted_data.extend(extracted_list)
-                            file_text = "\n".join([item["text"] for item in extracted_list])
-                            all_text_parts.append(file_text)
-                    
-                    contract_text = "\n\n".join(all_text_parts)
-                    
-                    if contract_text.strip():
-                        st.success(f"✅ {len(uploaded_files)} file(s) processed successfully.")
-                        with st.expander("📄 View Extracted Text"):
-                            st.text_area("Extracted Content", contract_text, height=200, disabled=True)
-                    else:
-                        st.warning("⚠️ Uploaded files contain no readable text.")
-
-                except Exception as e:
-                    st.error(f"❌ Error reading file: {e}")
-
-    else:
-        contract_text = st.text_area(
-            "Paste contract text here",
-            height=300,
-            placeholder="Paste the full contract text here..."
-        )
-        # For pasted text, create a dummy extracted_data structure
-        all_extracted_data = [{"text": contract_text, "source": "user_input", "page": 1}]
-
-# ---------- Configuration & Execution (Conditional) ----------
-analyze_clicked = False
-
-if contract_text.strip():
-    st.divider()
-    
-    # st.divider()
-    
-    # Layout: Instructions (Left) | Customization Button (Right)
-    # We want "Specific Instructions" taking most space, and "Customize" on the right.
-    
-    # Layout: Instructions (Left) | Customization Button (Right)
-    # User requested same row, same height components.
-    
-    # 1. Label row (outside to avoid offset issues)
-    st.markdown("**Specific Instructions (Optional):**")
-    
-    # 2. Input and Button row
-    # Vertical alignment "center" or "top" works best when components are naturally similar height
-    col_instr, col_cust = st.columns([3, 1], vertical_alignment="top")
-    
-    with col_instr:
-        # Switching to text_input to match button height perfectly
-        user_instructions = st.text_input(
-            "Instructions",
-            placeholder="E.g., Focus specifically on termination clauses...",
-            help="These instructions will guide the specialized agents.",
-            label_visibility="collapsed"
-        )
-
-    with col_cust:
-        # Popover for Customization
-        with st.popover("⚙️ Customize Report", use_container_width=True):
-            # Header row with "Report Settings" and simple "Reset" button
-            # Align center to fix "upside" reset button
-            col_head, col_reset = st.columns([3, 1], vertical_alignment="center")
-            
-            with col_head:
-                st.markdown("### Report Settings")
-            with col_reset:
-                # User requested "minimal and no symbols just the reset text and small box"
-                if st.button("Reset", key="reset_customization", help="Reset to defaults"):
-                     st.session_state.report_tone = "Standard Professional"
-                     st.session_state.focus_area = "General Analysis"
-                     st.session_state.report_length = "Standard"
-                     st.session_state.included_sections = ["Executive Summary", "Compliance Analysis", "Financial Analysis", "Legal Risks", "Operational Notes"]
-                     st.rerun()
-            
-            # --- Presets (Quick Profiles) ---
-            st.markdown("**Quick Profiles**")
-            # "Not in fit mode" + "Specific height equal for both"
-            # We use use_container_width=True to fill space equally. 
-            # Vertical alignment ensures they sit well.
-            col_p1, col_p2 = st.columns(2, vertical_alignment="center")
-            
-            with col_p1:
-                if st.button("🚀 CFO Brief", help="Sets: Executive Tone, Concise Length, Financial Focus", use_container_width=True):
-                    st.session_state.report_tone = "Executive Summary (Brief)"
+        with col_config:
+            # "Configure" Popover Button
+            with st.popover("⚙️ Configure", use_container_width=True, help="Adjust analysis settings"):
+                st.markdown("### Analysis Settings")
+                
+                # 1. Presets
+                preset = st.selectbox("Quick Profile", ["Default", "CFO Brief", "Legal Deep Dive", "Compliance Check"])
+                
+                if preset == "CFO Brief":
+                    st.session_state.report_tone = "Executive Summary"
                     st.session_state.focus_area = "Financial Risks"
                     st.session_state.report_length = "Concise"
-                    st.session_state.included_sections = ["Executive Summary", "Financial Analysis"]
-                    st.rerun()
-                    
-            with col_p2:
-                if st.button("⚖️ Legal Deep Dive", help="Sets: Strict Legal Tone, Exhaustive Length, Legal Loophole Focus", use_container_width=True):
+                elif preset == "Legal Deep Dive":
                     st.session_state.report_tone = "Strict Legal"
                     st.session_state.focus_area = "Legal Loopholes"
                     st.session_state.report_length = "Exhaustive"
-                    st.session_state.included_sections = ["Executive Summary", "Compliance Analysis", "Legal Risks"]
-                    st.rerun()
+                    
+                st.divider()
 
-            st.divider()
-            
-            # 1. Tone
-            st.radio(
-                "Report Tone",
-                ["Standard Professional", "Executive Summary (Brief)", "Plain English (Simplified)", "Strict Legal"],
-                key="report_tone",
-                help="Controls the writing style and vocabulary of the final report."
-            )
-            
-            st.divider()
-            
-            # 2. Length
-            st.radio(
-                "Report Length",
-                ["Concise", "Standard", "Exhaustive"],
-                key="report_length",
-                help="Determines the depth of detail and total word count."
-            )
-            
-            st.divider()
+                # 2. Manual Overrides
+                st.text_input("Specific Focus", placeholder="e.g. Termination", key="user_instructions_input") 
+                st.radio("Tone", ["Standard Professional", "Strict Legal", "Executive Summary"], key="report_tone")
+                st.radio("Length", ["Concise", "Standard", "Exhaustive"], key="report_length")
+                st.selectbox("Focus Area", ["General Analysis", "Financial Risks", "Compliance Gaps", "Operational Liabilities", "Legal Loopholes"], key="focus_area")
+                st.multiselect("Sections", ["Executive Summary", "Compliance Analysis", "Financial Analysis", "Legal Risks", "Operational Notes"], default=st.session_state.included_sections, key="included_sections")
+        
+        st.markdown('</div>', unsafe_allow_html=True)
 
-            # 3. Focus
-            st.radio(
-                "Focus Area",
-                ["General Analysis", "Financial Risks", "Compliance Gaps", "Operational Liabilities", "Legal Loopholes"],
-                key="focus_area",
-                help="Prioritizes specific types of risks and clauses in the analysis."
-            )
-            
-            st.divider()
-            
-            # 4. Included Sections (Checkboxes)
-            # Hack to add a tooltip to a "header" - use a column or just caption
-            st.markdown("**Included Sections**", help="Select which sections to include in the final report.")
-            
-            all_sections = ["Executive Summary", "Compliance Analysis", "Financial Analysis", "Legal Risks", "Operational Notes"]
-            
-            # Sync checkboxes with session state list
-            for section in all_sections:
-                is_checked = section in st.session_state.included_sections
-                if st.checkbox(section, value=is_checked, key=f"chk_{section}"):
-                    if section not in st.session_state.included_sections:
-                        st.session_state.included_sections.append(section)
-                else:
-                    if section in st.session_state.included_sections:
-                        st.session_state.included_sections.remove(section)
+    # Process Input
+    contract_text = ""
+    all_extracted_data = []
+    
+    if uploaded_files:
+        try:
+            for file in uploaded_files:
+                extracted = text_extractor(file)
+                if extracted:
+                    all_extracted_data.extend(extracted)
+                    contract_text += "\n".join([item["text"] for item in extracted]) + "\n\n"
+        except Exception as e:
+            st.error(f"Error reading file: {e}")
+    elif pasted_text:
+        contract_text = pasted_text
+        all_extracted_data = [{"text": pasted_text, "source": "user_input", "page": 1}]
 
-    st.write("#####") # Spacing
+    # Action Button
+    col_centered = st.columns([1, 2, 1])
+    with col_centered[1]:
+        analyze_btn = st.button("🚀 Analyze Contract", type="primary", use_container_width=True, disabled=not contract_text.strip())
 
-# Make button always visible but disabled if no text
-analyze_clicked = st.button(
-    "🚀 Start Analysis",
-    type="primary",
-    use_container_width=True,
-    disabled = not bool(contract_text.strip())
-)
-
-# ---------- Analysis Logic ----------
-if analyze_clicked:
-    if not contract_text.strip():
-        st.error("Please provide contract text before starting analysis.")
-    else:
-        with st.status("🤖 Orchestrating AI Agents...", expanded=True) as status:
+    # Analysis Logic
+    if analyze_btn:
+        status_placeholder = st.empty()
+        
+        with status_placeholder.container():
+            st.markdown("### 🔄 Processing...")
+            progress_bar = st.progress(0)
+            
             try:
-                # Construct Final Instructions from UI State
+                # 1. Setup
                 final_instructions = (
-                    f"User Request: {user_instructions}\n"
+                    f"User Request: {st.session_state.get('user_instructions_input', 'None')}\n"
                     f"Report Tone: {st.session_state.report_tone}\n"
                     f"Focus Area: {st.session_state.focus_area}\n"
                     f"Report Length: {st.session_state.report_length}\n"
                     f"Target Sections: {', '.join(st.session_state.included_sections)}"
                 )
-
-                st.write("Initializing workflow graph...")
                 graph = build_clauseai_graph()
+                progress_bar.progress(20, text="Graph initialized...")
                 
-                with st.spinner("📄 Ingesting and embedding document chunks..."):
-                    # Use passed data or fallback to text
-                    input_data = all_extracted_data if 'all_extracted_data' in locals() and all_extracted_data else [{"text": contract_text, "source": "user_input", "page": 1}]
-                    # Small delay to visual comfort if needed, but actual logic matches
-                    
-                with st.spinner("🕵️‍♂️ Running multi-agent analysis (Finance, Legal, Compliance, Operations)..."):
-                    # Use asyncio.run for async graph execution
-                    import asyncio
-                    import sys
-                    
-                    # Fix for Windows Event Loop runtime error
-                    if sys.platform.startswith("win"):
-                        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-                        
-                    result = asyncio.run(graph.ainvoke({
-                        "contract_text": contract_text,
-                        "extracted_data": input_data,
-                        "user_instructions": final_instructions
-                    }))
+                # 2. Ingest
+                ingest_data = all_extracted_data if all_extracted_data else [{"text": contract_text, "source": "text", "page": 1}]
+                progress_bar.progress(40, text="Ingesting & Embedding...")
                 
-                with st.spinner("📝 Synthesizing final strategic report..."):
-                    st.session_state.analysis_result = result
-                    
-                status.update(label="✅ Analysis Complete!", state="complete", expanded=False)
-
+                # 3. Analyze (Async)
+                if sys.platform.startswith("win"):
+                    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+                
+                progress_bar.progress(60, text="Running AI Agents (Finance, Legal, Compliance)...")
+                
+                result = asyncio.run(graph.ainvoke({
+                    "contract_text": contract_text,
+                    "extracted_data": ingest_data,
+                    "user_instructions": final_instructions
+                }))
+                
+                progress_bar.progress(90, text="Synthesizing Final Report...")
+                st.session_state.analysis_result = result
+                
+                # Check for Risk Level
+                risk_match = re.search(r"Risk Level:?\s*(\w+)", result.get("final_report", ""), re.IGNORECASE)
+                risk_level = risk_match.group(1).upper() if risk_match else "N/A"
+                
+                # SAVE TO HISTORY
+                save_to_history(
+                    contract_text=contract_text,
+                    final_report=result.get("final_report", ""),
+                    agent_outputs=result.get("agent_outputs", {}),
+                    risk_level=risk_level
+                )
+                
+                progress_bar.progress(100, text="Complete!")
+                time.sleep(1)
+                status_placeholder.empty()
+                
             except Exception as e:
-                status.update(label="❌ Analysis Failed", state="error")
-                st.error(f"An error occurred during analysis: {e}")
+                st.error(f"Analysis failed: {e}")
 
-# ---------- UI IMPORTS (New) ----------
-from streamlit_option_menu import option_menu
-from streamlit_extras.metric_cards import style_metric_cards
-from streamlit_extras.colored_header import colored_header
-from streamlit_extras.badges import badge
+    # Results View
+    if st.session_state.analysis_result:
+        result = st.session_state.analysis_result
+        final_report = result.get("final_report", "")
+        
+        # Parse Risk (Again for display if needed, but result has it)
+        risk_match = re.search(r"Risk Level:?\s*(\w+)", final_report, re.IGNORECASE)
+        risk_level = risk_match.group(1).upper() if risk_match else "N/A"
+        
+        # 1. Executive Dashboard
+        st.markdown("### 📊 Executive Dashboard")
+        
+        col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+        col_m1.metric("Overall Risk", risk_level, delta="High" if risk_level == "HIGH" else ("Low" if risk_level == "LOW" else None), delta_color="inverse")
+        col_m2.metric("Focus Area", st.session_state.focus_area)
+        col_m3.metric("Processed Clauses", len(all_extracted_data)) # Proxy metric
+        col_m4.metric("Agents Active", "4")
+        
+        style_metric_cards(background_color="#1e293b", border_left_color="#818cf8", border_radius_px=10, box_shadow=True)
+        
+        add_vertical_space(2)
 
-# ---------- Results Display ----------
-if st.session_state.analysis_result:
-    st.divider()
-    result = st.session_state.analysis_result
-    
-    # 1. Header with Extras (Removed as per user request)
-    
-    # --- PARSING & METRICS (Moved Up) ---
-    import re
-    import time
+        # 2. Executive Summary Card
+        st.markdown('<div class="css-card">', unsafe_allow_html=True)
+        st.markdown("#### 📌 Executive Summary")
+        exec_summary_match = re.search(r"(?:#+)?\s*1\.\s*Executive Summary(.*?)(?:#+)?\s*2\.", final_report, re.DOTALL | re.IGNORECASE)
+        summary_text = exec_summary_match.group(1).strip() if exec_summary_match else "See full report details."
+        st.markdown(summary_text)
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        # 3. Detailed Agent Analysis Tabs
+        st.markdown("### 🔍 Detailed Analysis")
+        
+        outputs = result.get("agent_outputs", {})
+        if outputs:
+            tabs = st.tabs([k.capitalize() for k in outputs.keys()])
+            for i, (agent, content) in enumerate(outputs.items()):
+                with tabs[i]:
+                    st.markdown(content)
+        
+        add_vertical_space(2)
+        
+        # 4. Export Actions
+        st.markdown("### 📥 Export Report")
+        
+        # Defer generation to avoid auto-download/performance hit
+        if st.button("📦 Generate PDF & Word Reports"):
+            with st.spinner("Generating files..."):
+                from utils.report_generator import generate_pdf, generate_word
+                
+                # Generate files only on demand
+                pdf_bytes = generate_pdf(final_report)
+                docx_bytes = generate_word(final_report)
+                
+                col_ex1, col_ex2 = st.columns(2)
+                with col_ex1:
+                    st.download_button("📄 Download PDF", pdf_bytes, "report.pdf", "application/pdf", use_container_width=True)
+                with col_ex2:
+                    st.download_button("📝 Download Word", docx_bytes, "report.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", use_container_width=True)
 
-    full_report = result.get("final_report", "No report generated.")
+# ---------- HISTORY PAGE ----------
+elif selected_page == "History":
+    st.title("Analysis History")
     
-    # Extract Risk Level safely
-    risk_match = re.search(r"Risk Level:?\s*(\w+)", full_report, re.IGNORECASE)
-    risk_level = risk_match.group(1) if risk_match else "N/A"
+    history_data = load_history()
     
-    # Helper for Typewriter Effect
-    def stream_data(text):
-        for word in text.split(" "):
-            yield word + " "
-            time.sleep(0.01)
-
-    # --- AGENT ANALYSIS SECTION (Modified Layout) ---
-    st.write("#####")
-    
-    # Layout: Header (Left) | Risk Badge (Right)
-    col_header, col_risk = st.columns([3, 1], vertical_alignment="bottom")
-    
-    with col_header:
-        colored_header(
-            label="Detailed Agent Analysis",
-            description="Deep dive findings from specialized agents",
-            color_name="violet-70"
-        )
+    if not history_data:
+        st.info("No analysis history found. Run an analysis to see it here!")
+    else:
+        for item in history_data:
+            with st.expander(f"📄 {item['timestamp']} - Risk: {item.get('risk_level', 'N/A')}"):
+                st.markdown(f"**Risk Level:** {item.get('risk_level', 'N/A')}")
+                st.markdown(f"**Summary:** {item.get('summary', 'No summary')}")
+                
+                if st.button("View Full Report", key=f"view_{item['id']}"):
+                    st.session_state.analysis_result = {
+                        "final_report": item["final_report"],
+                        "agent_outputs": item["agent_outputs"]
+                    }
+                    # Force switch to Analysis tab
+                    st.session_state["main_menu"] = "Analysis" 
+                    st.rerun()
+                    
+                st.divider()
+                st.markdown("### Full Report Preview")
+                st.markdown(item["final_report"])
         
-    with col_risk:
-        # Display Risk Level parallel to header
-        if risk_level.upper() == "HIGH":
-            st.error(f"🚩 **Risk Level: HIGH**", icon="🚨")
-        elif risk_level.upper() == "MEDIUM":
-            st.warning(f"⚠️ **Risk Level: MEDIUM**", icon="⚠️")
-        elif risk_level.upper() == "LOW":
-            st.success(f"✅ **Risk Level: LOW**", icon="✅")
-        else:
-            st.info(f"ℹ️ Risk: {risk_level}")
-    
-    outputs = result.get("agent_outputs", {})
-    if outputs:
-        # Create option menu tabs dynamically
-        tab_names = [name.capitalize() for name in outputs.keys()]
-        
-        # Horizontal Menu for Agents
-        selected_agent = option_menu(
-            menu_title=None, 
-            options=tab_names, 
-            icons=['shield-check', 'currency-dollar', 'gavel', 'gear'], 
-            menu_icon="cast", 
-            default_index=0, 
-            orientation="horizontal",
-            styles={
-                "container": {"padding": "0!important", "background-color": "#fafafa"},
-                "icon": {"color": "orange", "font-size": "18px"}, 
-                "nav-link": {"font-size": "14px", "text-align": "left", "margin":"0px", "--hover-color": "#eee"},
-                "nav-link-selected": {"background-color": "#6f42c1"},
-            }
-        )
-        
-        # Display Content
-        key_map = {name.capitalize(): name for name in outputs.keys()}
-        agent_key = key_map.get(selected_agent)
-        
-        if agent_key:
-            st.markdown(f"**Analysis from {selected_agent} Agent:**")
-            st.markdown(outputs[agent_key])
-
-    # ---------- Download Section ----------
-    st.write("#####")
-    colored_header(
-        label="Download Report",
-        description="Export detailed findings",
-        color_name="red-70"
-    )
-    
-    from utils.report_generator import generate_pdf, generate_word
-    
-    report_text = result.get("final_report", "No report content.")
-    
-    col_d1, col_d2 = st.columns([1, 2], vertical_alignment="center")
-    
-    with col_d1:
-        # Styled format choice using simple radio (option_menu is for nav)
-        format_choice = st.radio("Select Format:", ["PDF", "Word (DOCX)"], horizontal=True)
-        
-    with col_d2:
-        if format_choice == "PDF":
-            pdf_bytes = generate_pdf(report_text)
-            st.download_button(
-                label="📄 Download PDF Report",
-                data=pdf_bytes,
-                file_name="clauseai_report.pdf",
-                mime="application/pdf",
-                use_container_width=True,
-                type="primary",
-                key="btn_download_pdf"
-            )
-        else:
-            docx_bytes = generate_word(report_text)
-            st.download_button(
-                label="📝 Download Word Report",
-                data=docx_bytes,
-                file_name="clauseai_report.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                use_container_width=True,
-                type="primary",
-                key="btn_download_word"
-            )
+        add_vertical_space(3)
+        st.markdown("---")
+        st.caption("🔒 **Security Note**: Your confidentiality is our responsibility. All history is stored locally on your machine and is never shared.")
