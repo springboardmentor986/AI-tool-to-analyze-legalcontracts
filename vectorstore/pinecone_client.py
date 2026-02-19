@@ -15,7 +15,7 @@ class PineconeClient:
             try:
                 self.pc.create_index(
                     name=self.index_name,
-                    dimension=768, # Dimension for text-embedding-004
+                    dimension=3072, # Dimension for gemini-embedding-001 (verified 3072)
                     metric="cosine",
                     spec=ServerlessSpec(
                         cloud=PINECONE_CLOUD,
@@ -83,4 +83,12 @@ class PineconeClient:
         )
 
         matches = results.get("matches", [])
-        return [match["metadata"]["text"] for match in matches if "metadata" in match]
+        # Return full metadata for citation support
+        return [
+            {
+                "text": match["metadata"].get("text", ""),
+                "page": match["metadata"].get("page", 0),
+                "source": match["metadata"].get("source", "unknown")
+            }
+            for match in matches if "metadata" in match
+        ]

@@ -9,16 +9,19 @@ class AsyncRunner:
         Executes agents in parallel with concurrency control (max 2) to avoid Rate Limits.
         agents_map: Dict[name, AgentInstance]
         """
-        semaphore = asyncio.Semaphore(1)  # Strict limit to 1 concurrent agent
+        semaphore = asyncio.Semaphore(4)  # Allow parallel execution (up to 4 agents)
         results_map = {}
         
         async def run_agent_safe(name, agent):
             async with semaphore:
                 try:
-                    # random sleep to stagger slightly and respect RPM
-                    await asyncio.sleep(4) 
-                    return name, await asyncio.to_thread(agent.analyze, contract_text, user_instructions)
+                    print(f"▶️ Starting Agent: {name.capitalize()}...")
+                    # removed artificial sleep to speed up execution
+                    result = await asyncio.to_thread(agent.analyze, contract_text, user_instructions)
+                    print(f"✅ Finished Agent: {name.capitalize()}")
+                    return name, result
                 except Exception as e:
+                    print(f"❌ Error in Agent {name}: {e}")
                     return name, f"Error: {str(e)}"
 
         tasks = [run_agent_safe(name, agent) for name, agent in agents_map.items()]

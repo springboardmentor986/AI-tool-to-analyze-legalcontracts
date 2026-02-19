@@ -1,5 +1,6 @@
 from llm.gemini import call_gemini
 from llm.prompts import BASE_AGENT_PROMPT
+from vectorstore.pinecone_client import PineconeClient
 
 class BaseAgent:
     """
@@ -14,10 +15,16 @@ class BaseAgent:
         """
         Retrieves relevant chunks from Pinecone.
         """
-        from vectorstore.pinecone_client import PineconeClient
         pc = PineconeClient()
-        chunks = pc.query_relevant_chunks(query)
-        return "\n---\n".join(chunks)
+        chunks_data = pc.query_relevant_chunks(query)
+        
+        formatted_chunks = []
+        for item in chunks_data:
+            text = item.get("text", "")
+            page = item.get("page", "?")
+            formatted_chunks.append(f"[Source: Page {page}]\n{text}")
+            
+        return "\n---\n".join(formatted_chunks)
 
     def analyze(self, contract_text: str, user_message: str = "None") -> str:
         """

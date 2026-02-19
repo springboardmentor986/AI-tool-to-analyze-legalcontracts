@@ -35,7 +35,7 @@ class ComplianceAgent(BaseAgent):
         {risks}
         
         Task: Provide specific, actionable mitigation strategies for each risk. Rate the severity (High/Medium/Low) of each.
-        Format the output as a structured report.
+        Format: Return ONLY the mitigation strategies. Do NOT include an Executive Summary or analysis of other domains (Legal/Finance).
         """
         final_report = call_gemini(mitigation_prompt)
         

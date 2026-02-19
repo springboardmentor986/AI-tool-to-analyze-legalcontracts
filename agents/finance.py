@@ -33,6 +33,7 @@ class FinanceAgent(BaseAgent):
         {extracted_data}
         
         Task: Highlight any unfavorable terms, missing protections, or ambiguous financial clauses. Calculate potential maximum liability if possible.
+        Format: Return ONLY the financial analysis. Do NOT include an Executive Summary.
         """
         report = call_gemini(analysis_prompt)
         

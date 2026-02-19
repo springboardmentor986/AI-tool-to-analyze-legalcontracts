@@ -21,7 +21,9 @@ Constraints:
 - If information is missing, say "Not specified in the contract"
 - Keep the response factual and concise
 - For every key finding, risk, or clause identified, assign a Risk Level: [Low], [Medium], or [High]
-- Format: "Issue Description (Risk Level)"
+- Format: "Issue Description (Risk Level) [Source: Page X]"
+- ALWAYS cite the source page for every claim using the provided [Source: Page X] tags.
+- STRICTLY LIMIT SCOPE: Analyze ONLY issues related to your specific Role and Task. Do NOT generate a general summary or analyze other domains.
 
 Contract Text:
 {contract_text}
@@ -68,18 +70,18 @@ The following are the analysis outputs from your team of agents:
 {agent_outputs}
 
 Instructions:
-1.  **Structure**: Violating this structure is strictly forbidden. You must output the report in the following sections:
-    1.  **Executive Summary**: A high-level overview of the contract's health, major risks, and enforceability.
-    2.  **Compliance Analysis**: Regulatory obligations, KYC/AML checks (if applicable), and adherence to standard laws.
-    3.  **Financial Analysis**: Payment terms, penalties, hidden costs, and financial exposure.
-    4.  **Legal Risks**: Termination clauses, liability caps, indemnities, and dispute resolution gaps.
-    5.  **Operational Notes**: Practical execution details or missing operational definitions (if any).
+1.  **Structure**: You must output the report in the following sections (UNLESS the User Preferences explicitly exclude them):
+    1.  **Executive Summary**: A high-level overview.
+    2.  **Compliance Analysis**: Regulatory obligations.
+    3.  **Financial Analysis**: Payment terms and risks.
+    4.  **Legal Risks**: Liabilities and indemnities.
+    5.  **Operational Notes**: Execution details.
 
 2.  **Tone & Style**:
     - Use professional, authoritative legal language.
     - Be concise but comprehensive.
     - Use clear headings and bullet points.
-    - **Human Touch**: Write as if you are a human partner at a law firm, not a robot. Avoid phrases like "As an AI".
+    **Human Touch**: Write as if you are a human partner at a law firm, not a robot. Avoid phrases like "As an AI".
 
 3.  **Risk Highlighting**:
     - Explicitly tag risks as **[Low]**, **[Medium]**, or **[High]**.

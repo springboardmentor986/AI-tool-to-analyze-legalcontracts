@@ -262,12 +262,6 @@ if analyze_clicked:
                 with st.spinner("🕵️‍♂️ Running multi-agent analysis (Finance, Legal, Compliance, Operations)..."):
                     # Use asyncio.run for async graph execution
                     import asyncio
-                    import sys
-                    
-                    # Fix for Windows Event Loop runtime error
-                    if sys.platform.startswith("win"):
-                        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-                        
                     result = asyncio.run(graph.ainvoke({
                         "contract_text": contract_text,
                         "extracted_data": input_data,
@@ -283,117 +277,86 @@ if analyze_clicked:
                 status.update(label="❌ Analysis Failed", state="error")
                 st.error(f"An error occurred during analysis: {e}")
 
-# ---------- UI IMPORTS (New) ----------
-from streamlit_option_menu import option_menu
-from streamlit_extras.metric_cards import style_metric_cards
-from streamlit_extras.colored_header import colored_header
-from streamlit_extras.badges import badge
-
 # ---------- Results Display ----------
 if st.session_state.analysis_result:
     st.divider()
     result = st.session_state.analysis_result
     
-    # 1. Header with Extras (Removed as per user request)
+    st.subheader("📊 Analysis Report")
     
-    # --- PARSING & METRICS (Moved Up) ---
-    import re
-    import time
-
+    # Domain Tag
+    domain = result.get("plan", {}).get("domain", "General")
+    st.caption(f"**Detected Domain:** {domain}")
+    
+    # Final Report
     full_report = result.get("final_report", "No report generated.")
     
-    # Extract Risk Level safely
-    risk_match = re.search(r"Risk Level:?\s*(\w+)", full_report, re.IGNORECASE)
-    risk_level = risk_match.group(1) if risk_match else "N/A"
+    # --- EXECUTIVE DASHBOARD (Point 4) ---
+    # Extract Executive Summary if present
+    import re
+    import time
     
-    # Helper for Typewriter Effect
+    # Helper for Typewriter Effect (Point 23)
     def stream_data(text):
         for word in text.split(" "):
             yield word + " "
-            time.sleep(0.01)
+            time.sleep(0.02)
 
-    # --- AGENT ANALYSIS SECTION (Modified Layout) ---
-    st.write("#####")
+    # Look for "1. Executive Summary" or "## 1. Executive Summary" up to the next section
+    # The next section usually starts with "2." or "## 2."
+    exec_summary_match = re.search(r"(?:#+)?\s*1\.\s*Executive Summary(.*?)(?:#+)?\s*2\.", full_report, re.DOTALL | re.IGNORECASE)
     
-    # Layout: Header (Left) | Risk Badge (Right)
-    col_header, col_risk = st.columns([3, 1], vertical_alignment="bottom")
+    if exec_summary_match:
+        summary_text = exec_summary_match.group(1).strip()
+        with st.container():
+            st.info(f"### 📌 Executive Summary\n\n{summary_text}")
     
-    with col_header:
-        colored_header(
-            label="Detailed Agent Analysis",
-            description="Deep dive findings from specialized agents",
-            color_name="violet-70"
-        )
-        
-    with col_risk:
-        # Display Risk Level parallel to header
-        if risk_level.upper() == "HIGH":
-            st.error(f"🚩 **Risk Level: HIGH**", icon="🚨")
-        elif risk_level.upper() == "MEDIUM":
-            st.warning(f"⚠️ **Risk Level: MEDIUM**", icon="⚠️")
-        elif risk_level.upper() == "LOW":
-            st.success(f"✅ **Risk Level: LOW**", icon="✅")
+    # Full Report Container
+    with st.expander("📄 View Full Strategic Report", expanded=True):
+        # Logic to stream only once
+        if "report_streamed" not in st.session_state or st.session_state.get("last_result_id") != id(result):
+            st.write_stream(stream_data(full_report))
+            st.session_state.report_streamed = True
+            st.session_state.last_result_id = id(result)
         else:
-            st.info(f"ℹ️ Risk: {risk_level}")
+            st.markdown(full_report)
+
+    # --- AGENT TABS (Point 6) ---
+    st.write("#####")
+    st.subheader("🔍 Detailed Agent Analysis")
     
     outputs = result.get("agent_outputs", {})
     if outputs:
-        # Create option menu tabs dynamically
+        # Create tabs dynamically based on available agents
         tab_names = [name.capitalize() for name in outputs.keys()]
+        tabs = st.tabs(tab_names)
         
-        # Horizontal Menu for Agents
-        selected_agent = option_menu(
-            menu_title=None, 
-            options=tab_names, 
-            icons=['shield-check', 'currency-dollar', 'gavel', 'gear'], 
-            menu_icon="cast", 
-            default_index=0, 
-            orientation="horizontal",
-            styles={
-                "container": {"padding": "0!important", "background-color": "#fafafa"},
-                "icon": {"color": "orange", "font-size": "18px"}, 
-                "nav-link": {"font-size": "14px", "text-align": "left", "margin":"0px", "--hover-color": "#eee"},
-                "nav-link-selected": {"background-color": "#6f42c1"},
-            }
-        )
-        
-        # Display Content
-        key_map = {name.capitalize(): name for name in outputs.keys()}
-        agent_key = key_map.get(selected_agent)
-        
-        if agent_key:
-            st.markdown(f"**Analysis from {selected_agent} Agent:**")
-            st.markdown(outputs[agent_key])
+        for i, (agent_name, agent_output) in enumerate(outputs.items()):
+            with tabs[i]:
+                st.markdown(f"**Analysis from {agent_name.capitalize()} Agent:**")
+                st.markdown(agent_output)
 
     # ---------- Download Section ----------
-    st.write("#####")
-    colored_header(
-        label="Download Report",
-        description="Export detailed findings",
-        color_name="red-70"
-    )
+    st.subheader("📥 Download Report")
     
     from utils.report_generator import generate_pdf, generate_word
     
     report_text = result.get("final_report", "No report content.")
     
-    col_d1, col_d2 = st.columns([1, 2], vertical_alignment="center")
+    col_d1, col_d2 = st.columns([1, 2])
     
     with col_d1:
-        # Styled format choice using simple radio (option_menu is for nav)
-        format_choice = st.radio("Select Format:", ["PDF", "Word (DOCX)"], horizontal=True)
+        format_choice = st.radio("Select Format:", ["PDF", "Word (DOCX)"])
         
     with col_d2:
+        st.write("#####") # Spacing to align with radio
         if format_choice == "PDF":
             pdf_bytes = generate_pdf(report_text)
             st.download_button(
                 label="📄 Download PDF Report",
                 data=pdf_bytes,
                 file_name="clauseai_report.pdf",
-                mime="application/pdf",
-                use_container_width=True,
-                type="primary",
-                key="btn_download_pdf"
+                mime="application/pdf"
             )
         else:
             docx_bytes = generate_word(report_text)
@@ -401,8 +364,5 @@ if st.session_state.analysis_result:
                 label="📝 Download Word Report",
                 data=docx_bytes,
                 file_name="clauseai_report.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                use_container_width=True,
-                type="primary",
-                key="btn_download_word"
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             )
