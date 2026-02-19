@@ -12,7 +12,7 @@ LLM_TEMPERATURE = 0.2
 
 # OpenRouter / DeepSeek
 OPENROUTER_API_KEY = "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"
-OPENROUTER_MODEL_NAME = "deepseek/deepseek-r1-0528:free" 
+OPENROUTER_MODEL_NAME = "openrouter/aurora-alpha" 
 
 AGENT_OBJECTIVES = {
     "compliance": "Identify regulatory and compliance obligations.",

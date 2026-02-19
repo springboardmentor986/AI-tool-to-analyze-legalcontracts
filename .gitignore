@@ -4,3 +4,6 @@ venv/
 
 __pycache__/
 
+app_backup_ui_final.py
+
+app_backup.py
