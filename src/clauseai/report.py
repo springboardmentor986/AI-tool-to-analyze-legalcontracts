@@ -15,16 +15,18 @@ EXPECTED_CLAUSES = [
     "dispute_resolution",
 ]
 
-
 def _risk_from_clause_findings(find: Dict[str, Any]) -> str:
     risks = find.get("risks") or []
-    if not isinstance(risks, list):
-        return "Medium"
-    if len(risks) == 0:
+    missing = find.get("missing_or_ambiguous") or []
+
+    score = len(risks) + len(missing)
+
+    if score == 0:
         return "Low"
-    if len(risks) >= 3:
+    elif score <= 2:
+        return "Medium"
+    else:
         return "High"
-    return "Medium"
 
 
 def _looks_like_json(text: str) -> bool:

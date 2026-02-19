@@ -8,7 +8,8 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..
 ENV_PATH = os.path.join(PROJECT_ROOT, ".env")
 load_dotenv(dotenv_path=ENV_PATH, override=True)
 
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
+
 
 
 def get_embeddings():
