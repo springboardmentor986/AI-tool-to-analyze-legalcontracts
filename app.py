@@ -14,8 +14,22 @@ load_dotenv(dotenv_path=env_path)
 # -----------------------------
 from parser.document_parser import extract_text
 from graph.contract_graph import build_contract_graph
-from utils.vector_store import index_contract
+from utils.vector_store import index_contract, store_report
 from reports.report_generator import generate_report
+from utils.pdf_utils import generate_pdf
+from agents.chat_agent import chat_with_contract
+
+# -----------------------------
+# SESSION STATE INIT
+# -----------------------------
+if "final_state" not in st.session_state:
+    st.session_state.final_state = None
+if "report" not in st.session_state:
+    st.session_state.report = None
+if "all_text" not in st.session_state:
+    st.session_state.all_text = None
+if "chat_answer" not in st.session_state:
+    st.session_state.chat_answer = None
 
 # -----------------------------
 # PAGE CONFIG
@@ -26,77 +40,30 @@ st.set_page_config(
 )
 
 # -----------------------------
-# THEME TOGGLE
-# -----------------------------
-if "theme" not in st.session_state:
-    st.session_state.theme = "dark"
-
-dark_mode = st.sidebar.toggle("🌙 Dark Mode", value=True)
-st.session_state.theme = "dark" if dark_mode else "light"
-
-# -----------------------------
-# THEME CSS
-# -----------------------------
-if st.session_state.theme == "dark":
-    st.markdown("""
-    <style>
-    body {background:#0F172A;color:#E5E7EB;}
-    .hero{
-        background:linear-gradient(135deg,#1E1B4B,#312E81);
-        padding:3rem;border-radius:24px;margin-bottom:2rem;
-    }
-    .card{
-        background:#020617;padding:2rem;border-radius:20px;
-        box-shadow:0 0 20px rgba(99,102,241,0.25);
-    }
-    .stButton>button{
-        background:#6366F1;color:white;border-radius:12px;
-        font-weight:600;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-else:
-    st.markdown("""
-    <style>
-    body {background:#F9FAFB;color:#0F172A;}
-    .hero{
-        background:linear-gradient(135deg,#4F46E5,#6366F1);
-        padding:3rem;border-radius:24px;margin-bottom:2rem;
-    }
-    .card{
-        background:white;padding:2rem;border-radius:20px;
-        box-shadow:0 10px 25px rgba(0,0,0,0.06);
-    }
-    .stButton>button{
-        background:#4F46E5;color:white;border-radius:12px;
-        font-weight:600;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-# -----------------------------
 # HEADER
 # -----------------------------
 st.markdown("""
-<div class="hero">
+<div style="padding:2rem;border-radius:15px;
+background:linear-gradient(135deg,#6366F1,#4F46E5);
+color:white">
 <h1>📄 ClauseAI</h1>
 <p>AI-powered contract intelligence using LangGraph, Gemini & Pinecone</p>
 </div>
 """, unsafe_allow_html=True)
 
 # -----------------------------
-# SIDEBAR OPTIONS
+# SIDEBAR
 # -----------------------------
 st.sidebar.header("⚙️ Report Settings")
 
 tone = st.sidebar.selectbox(
     "Report Tone",
-    ["professional","business-friendly","simple","strict-legal"]
+    ["professional", "business-friendly", "simple", "strict-legal"]
 )
 
 focus = st.sidebar.selectbox(
     "Report Focus",
-    ["balanced","risk-heavy","compliance-heavy","financial-heavy"]
+    ["balanced", "risk-heavy", "compliance-heavy", "financial-heavy"]
 )
 
 # -----------------------------
@@ -104,7 +71,7 @@ focus = st.sidebar.selectbox(
 # -----------------------------
 uploaded_files = st.file_uploader(
     "Upload Contracts",
-    type=["pdf","docx"],
+    type=["pdf", "docx"],
     accept_multiple_files=True
 )
 
@@ -117,90 +84,123 @@ def process_file(file):
     index_contract(file.name, text)
     return f"\n\n--- {file.name} ---\n{text}"
 
+# -----------------------------
+# LOAD FILES
+# -----------------------------
 if uploaded_files:
-
-    with st.spinner("📥 Extracting & indexing contracts..."):
+    with st.spinner("📑 Extracting & indexing contracts..."):
         with ThreadPoolExecutor() as executor:
             texts = list(executor.map(process_file, uploaded_files))
 
-    all_text = "".join(texts)
-
-    st.success(f"✅ {len(uploaded_files)} contracts processed successfully")
+    st.session_state.all_text = "".join(texts)
+    st.success(f"{len(uploaded_files)} contracts processed")
 
     with st.expander("📜 View Extracted Text"):
-        st.text_area("", all_text, height=300)
+        st.text_area("", st.session_state.all_text, height=300)
 
-    # -----------------------------
-    # RUN ANALYSIS
-    # -----------------------------
-    if st.button("🚀 Run AI Analysis"):
+# -----------------------------
+# RUN ANALYSIS
+# -----------------------------
+if st.button("🚀 Run AI Analysis") and st.session_state.all_text:
+    with st.spinner("🤖 Running multi-agent analysis..."):
+        graph = build_contract_graph()
 
-        with st.spinner("🤖 Running multi-agent workflow..."):
-            graph = build_contract_graph()
+        st.session_state.final_state = graph.invoke({
+            "contract_text": st.session_state.all_text,
+            "contract_id": "Multiple Documents",
+            "shared_memory": [],
+            "retrieved_clauses": [],
+            "compliance": [],
+            "finance": [],
+            "legal": [],
+            "operations": [],
+            "final_report": ""
+        })
 
-            final_state = graph.invoke({
-                "contract_text": all_text,
-                "contract_id": "Multiple Documents",
-                "shared_memory": [],
-                "retrieved_clauses": [],
-                "compliance": [],
-                "finance": [],
-                "legal": [],
-                "operations": []
-            })
+    st.session_state.report = generate_report(
+        st.session_state.final_state,
+        tone,
+        focus
+    )
 
-        st.success("✅ Analysis completed")
+    store_report("Multiple Documents", st.session_state.report)
+    st.success("✅ Analysis completed")
 
-        # -----------------------------
-        # GENERATE REPORT
-        # -----------------------------
-        report = generate_report(final_state, tone, focus)
+# -----------------------------
+# DISPLAY RESULTS
+# -----------------------------
+if st.session_state.final_state:
 
-        # -----------------------------
-        # TABS
-        # -----------------------------
-        tabs = st.tabs([
-            "⚖️ Compliance",
-            "💰 Finance",
-            "📜 Legal",
-            "⚙️ Operations",
-            "📑 Final Report",
-            "💬 Feedback"
-        ])
+    tabs = st.tabs([
+        "⚖️ Compliance",
+        "💰 Finance",
+        "📜 Legal",
+        "⚙️ Operations",
+        "📑 Final Report",
+        "📥 Download PDF",
+        "💬 Chat",
+        "🧠 Memory"
+    ])
 
-        # -----------------------------
-        # RENDER FUNCTION
-        # -----------------------------
-        def render(findings):
-            if not findings:
-                st.info("No issues detected.")
-                return
+    def render(findings):
+        if not findings:
+            st.info("No issues detected.")
+            return
+        for c in findings:
+            with st.expander(c["clause_type"]):
+                st.write("Category:", c["category"])
+                st.write("Explanation:", c["explanation"])
+                st.write("How it appears:", c["how_it_appears"])
+                st.write("Why it matters:", c["why_it_matters"])
+                st.write("Risk:", c["risk_or_note"])
+                st.write("Countermeasure:", c.get("countermeasures", ""))
+                st.write("Severity:", c.get("severity", ""))
+                st.write("Confidence:", c.get("confidence", ""))
+                st.write("Summary:", c.get("summary", ""))
+                st.write("Source:", c.get("source_document", ""))
 
-            for c in findings:
-                with st.expander(c["clause_type"]):
-                    st.markdown(f"**Category:** {c['category']}")
-                    st.markdown(f"**Explanation:** {c['explanation']}")
-                    st.markdown(f"**How it appears:** {c['how_it_appears']}")
-                    st.markdown(f"**Why it matters:** {c['why_it_matters']}")
-                    st.markdown(f"**Risk:** {c['risk_or_note']}")
-                    st.markdown(f"**Counter Measure:** {c.get('counter_measure','N/A')}")
-                    st.markdown(f"**Severity:** {c.get('severity','N/A')}")
-                    st.markdown(f"**Confidence:** {c.get('confidence','N/A')}")
-                    st.markdown(f"**Summary:** {c.get('summary','N/A')}")
-                    st.markdown(f"**Source:** {c.get('source_document','N/A')}")
+    with tabs[0]:
+        render(st.session_state.final_state["compliance"])
 
-        with tabs[0]: render(final_state["compliance"])
-        with tabs[1]: render(final_state["finance"])
-        with tabs[2]: render(final_state["legal"])
-        with tabs[3]: render(final_state["operations"])
+    with tabs[1]:
+        render(st.session_state.final_state["finance"])
 
-        with tabs[4]:
-            st.text_area("Generated Report", report, height=450)
+    with tabs[2]:
+        render(st.session_state.final_state["legal"])
 
-        with tabs[5]:
-            feedback = st.text_area("Your feedback")
-            if st.button("Submit Feedback"):
-                st.success("Thanks for your feedback!")
+    with tabs[3]:
+        render(st.session_state.final_state["operations"])
+
+    with tabs[4]:
+        st.text_area("Generated Report", st.session_state.report, height=400)
+
+    with tabs[5]:
+        if st.button("Generate PDF"):
+            pdf_path = generate_pdf(
+                st.session_state.report,
+                "ClauseAI_Report.pdf"
+            )
+            with open(pdf_path, "rb") as f:
+                st.download_button(
+                    "Download Report",
+                    f,
+                    file_name="ClauseAI_Report.pdf"
+                )
+
+    with tabs[6]:
+        question = st.text_input("Ask a question about your contracts")
+
+        if st.button("Ask"):
+            st.session_state.chat_answer = chat_with_contract(
+                st.session_state.all_text,
+                question
+            )
+
+        if st.session_state.chat_answer:
+            st.write(st.session_state.chat_answer)
+
+    with tabs[7]:
+        st.write(st.session_state.final_state["shared_memory"])
 
 # -----------------------------
 # FOOTER
