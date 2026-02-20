@@ -69,8 +69,8 @@ Built using Recharts with responsive design.
 End-to-end multilingual support:
 Language	Status
 🇬🇧 English	           ✅ Full
-🇮🇳 Tamil (தமிழ்)	       ✅ Full
-🇮🇳 Hindi (हिंदी)	         ✅ Full
+🇮🇳 Tamil (தமிழ்)	   ✅ Full
+🇮🇳 Hindi (हिंदी)	       ✅ Full
 🇮🇳 Telugu (తెలుగు)	   ✅ Full
 🇮🇳 Malayalam (മലയാളം)	✅ Full
 
