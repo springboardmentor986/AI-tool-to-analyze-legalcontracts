@@ -94,3 +94,4 @@ def main():
             print(f"❌ Dimension mismatch: env DIM={dim} but index DIM={index_dim}")
 if __name__ == "__main__":
     main()
+    
