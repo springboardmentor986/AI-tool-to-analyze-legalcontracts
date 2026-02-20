@@ -206,8 +206,8 @@ with tab1:
 with tab2:
     st.markdown('<div class="card"><h4>Run Contract Analysis</h4>', unsafe_allow_html=True)
     l_btn, r_btn = st.columns(2)
-    run = l_btn.button("🚀 Analyze Contract", use_container_width=True)
-    if r_btn.button("🧹 Clear Results", use_container_width=True):
+    run = l_btn.button("🚀 Analyze Contract", width="stretch")
+    if r_btn.button("🧹 Clear Results", width="stretch"):
         st.session_state.update({"out": None, "last_run": {}, "analysis_error": None})
     
     prog, status = st.progress(0), st.empty()
@@ -276,9 +276,9 @@ with tab4:
             z.writestr("report.md", final_md); z.writestr("data.json", json.dumps(out))
         
         d1, d2, d3 = st.columns(3)
-        d1.download_button("⬇️ Markdown", final_md.encode(), "report.md", use_container_width=True)
-        d2.download_button("⬇️ JSON", json.dumps(out).encode(), "data.json", use_container_width=True)
-        d3.download_button("⭐ Zip Bundle", buf.getvalue(), "bundle.zip", use_container_width=True)
+        d1.download_button("⬇️ Markdown", final_md.encode(), "report.md", width="stretch")
+        d2.download_button("⬇️ JSON", json.dumps(out).encode(), "data.json", width="stretch")
+        d3.download_button("⭐ Zip Bundle", buf.getvalue(), "bundle.zip", width="stretch")
         
         st.write("---")
         st.markdown(final_md if final_md else "No report generated.")
@@ -294,7 +294,7 @@ with tab4:
             key="feedback_feature_input"
         )
         
-        if st.button("💾 Save Feedback & Re-Run", use_container_width=True):
+        if st.button("💾 Save Feedback & Re-Run", width="stretch"):
             if user_adjustment.strip():
                 # Store feedback in session state to be picked up by the next 'Analyze' run
                 st.session_state.feedback = user_adjustment
@@ -330,7 +330,7 @@ with tab5:
             st.markdown('<div class="gamified-card"><h5>⏱ Time Taken by Agent</h5>', unsafe_allow_html=True)
             fig_time = px.bar(df_agents, x="Agent", y="Time Taken (s)", color="Agent", template="plotly_white")
             fig_time.update_layout(margin=dict(l=0, r=0, t=0, b=0), showlegend=False)
-            st.plotly_chart(fig_time, use_container_width=True)
+            st.plotly_chart(fig_time, width="stretch")
             st.markdown('</div>', unsafe_allow_html=True)
 
         # 2. Performance Score (Bar/Radar Chart)
@@ -338,7 +338,7 @@ with tab5:
             st.markdown('<div class="gamified-card"><h5>🎯 Agent Performance Score</h5>', unsafe_allow_html=True)
             fig_perf = px.bar(df_agents, x="Performance Score", y="Agent", orientation='h', color="Performance Score", color_continuous_scale="Viridis", template="plotly_white")
             fig_perf.update_layout(margin=dict(l=0, r=0, t=0, b=0), coloraxis_showscale=False)
-            st.plotly_chart(fig_perf, use_container_width=True)
+            st.plotly_chart(fig_perf, width="stretch")
             st.markdown('</div>', unsafe_allow_html=True)
 
         # 3. Progress Timeline (Line Chart)
@@ -352,7 +352,7 @@ with tab5:
             df_timeline = pd.DataFrame(timeline_data)
             fig_line = px.line(df_timeline, x="Step", y="Progress (%)", color="Agent", markers=True, template="plotly_white")
             fig_line.update_layout(margin=dict(l=0, r=0, t=0, b=0), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
-            st.plotly_chart(fig_line, use_container_width=True)
+            st.plotly_chart(fig_line, width="stretch")
             st.markdown('</div>', unsafe_allow_html=True)
 
         # 4. Agent Categories (Pie Chart)
@@ -360,7 +360,7 @@ with tab5:
             st.markdown('<div class="gamified-card"><h5>🧩 Agent Categories</h5>', unsafe_allow_html=True)
             fig_pie = px.pie(df_agents, names="Category", hole=0.4, template="plotly_white", color_discrete_sequence=px.colors.qualitative.Pastel)
             fig_pie.update_layout(margin=dict(l=0, r=0, t=0, b=0), legend=dict(orientation="h", yanchor="bottom", y=-0.1))
-            st.plotly_chart(fig_pie, use_container_width=True)
+            st.plotly_chart(fig_pie, width="stretch")
             st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown('</div>', unsafe_allow_html=True)
