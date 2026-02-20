@@ -6,9 +6,9 @@ It acts as an automated legal consultant that can hear, think, and speak to user
 
 🚀 The Vision: From Academic Research to Consumer SaaS
 
-This project is built upon the theoretical foundation of the 2026 paper:
+This project is built upon the theoretical foundation of the 2026 academic paper:
 
-A Reusable Prompting Framework for Applying Large Language Models to Legal Tasks (Sriram et al., IEEE Access 2026).
+"A Reusable Prompting Framework for Applying Large Language Models to Legal Tasks" (Sriram et al., IEEE Access 2026).
 
 While the base paper proves that Structured Prompting (Chain-of-Thought, Role-Based) improves LLM accuracy on legal tasks over standard RAG models, it is inherently limited to text-based, high-literacy environments.
 
@@ -160,20 +160,17 @@ Ensure you have Python 3.9+ installed, then run:
 pip install -r requirements.txt
 
 
-(If requirements.txt is missing, manually install: pip install streamlit streamlit-option-menu SpeechRecognition edge-tts asyncio pinecone-client)
-
 4. Configure Environment Variables
 
-Create a .env file in the root directory and add your LLM & Pinecone API keys:
+Create a .env file in the root directory and add your API keys:
 
-# Example .env file
 GEMINI_API_KEY=your_gemini_api_key_here
 PINECONE_API_KEY=your_pinecone_api_key_here
 
 
 5. Configure Assets
 
-Ensure your AI Avatar videos and images are placed inside the assets/ folder. The app requires:
+Ensure your AI Avatar videos are placed inside the assets/ folder. The app requires:
 
 assets/idle.mp4
 
@@ -184,13 +181,13 @@ assets/talking.mp4
 streamlit run app.py
 
 
-The application will automatically generate the users.db SQLite database upon first launch.
+(The application will automatically generate the users.db SQLite database upon first launch.)
 
 🎮 How to Use the Platform
 
 Landing Page: You will be greeted by the ClauseAI hero screen. Click Sign Up.
 
-Registration: Create a new account (e.g., User: admin, Pass: 1234). You will start on the Free tier.
+Registration: Create a new account. You will start on the Free tier.
 
 Upgrade to Pro: Navigate to Billing & Plans in the sidebar. Click Upgrade to Pro to unlock the AI Consultant.
 
