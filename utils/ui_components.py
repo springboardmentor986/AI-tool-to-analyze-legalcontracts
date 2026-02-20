@@ -1,13 +1,17 @@
 import streamlit as st
 from streamlit_lottie import st_lottie
 import requests
+import urllib3
+
+# Suppress SSL warnings due to corporate proxies
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 def load_lottie_url(url: str):
     """
     Loads a Lottie animation from a URL.
     """
     try:
-        r = requests.get(url)
+        r = requests.get(url, verify=False)
         if r.status_code != 200:
             return None
         return r.json()

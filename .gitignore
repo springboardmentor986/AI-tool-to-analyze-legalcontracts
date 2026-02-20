@@ -5,5 +5,8 @@ venv/
 __pycache__/
 
 app_backup_ui_final.py
-
 app_backup.py
+app_backup_lang.py
+app_backup_*.py
+analysis_history.json
+.DS_Store

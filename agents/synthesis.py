@@ -21,8 +21,7 @@ class SynthesisAgent:
             # Application of the synthesis logic via LLM
             report = call_gemini(prompt)
             
-            # --- DETERMINISTIC VALIDATION (Point 9) ---
-            # --- DETERMINISTIC VALIDATION (Point 9) ---
+            # Validate that the LLM included all requested sections
             # Default sections
             default_sections = [
                 "Executive Summary",
@@ -37,10 +36,8 @@ class SynthesisAgent:
             # Parse dynamic sections from user_instructions if present
             if "Target Sections:" in user_instructions:
                 try:
-                    # Extract the part after "Target Sections:"
+                    # Extract requested sections from instructions string
                     section_str = user_instructions.split("Target Sections:")[1].strip()
-                    # It might be followed by other lines, but in app.py it's the last line.
-                    # Just in case, take the first line of the split
                     section_str = section_str.split("\n")[0]
                     if section_str:
                         target_sections = [s.strip() for s in section_str.split(",")]
@@ -49,8 +46,7 @@ class SynthesisAgent:
             
             missing_sections = []
             for section in target_sections:
-                # Flexible check: Match title regardless of numbering (e.g. "## 3. Financial Analysis" or "### Financial Analysis")
-                # We check if the section name exists in the report
+                # Verify the section name is present in the generated report output
                 if section not in report: 
                     missing_sections.append(section)
             

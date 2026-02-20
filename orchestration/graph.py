@@ -15,14 +15,8 @@ from vectorstore.pinecone_client import PineconeClient
 from orchestration.async_runner import AsyncRunner
 
 
-# -------------------------------------------------
-# SHARED STATE DEFINITION
-# -------------------------------------------------
-
+# Define the shared state dictionary passed between nodes in the graph
 class ClauseAIState(TypedDict):
-    """
-    Shared state passed between LangGraph nodes.
-    """
     contract_text: str
     extracted_data: list = [] # List of dicts from file_loader
     plan: Dict[str, Any]
@@ -31,9 +25,7 @@ class ClauseAIState(TypedDict):
     user_instructions: str
 
 
-# -------------------------------------------------
-# GRAPH NODES
-# -------------------------------------------------
+# Graph Node Definitions
 
 def ingestion_node(state: ClauseAIState) -> ClauseAIState:
     """
@@ -105,9 +97,7 @@ def synthesis_node(state: ClauseAIState) -> ClauseAIState:
     return state
 
 
-# -------------------------------------------------
-# GRAPH CONSTRUCTION
-# -------------------------------------------------
+# Build and compile the workflow graph
 
 def build_clauseai_graph():
     graph = StateGraph(ClauseAIState)

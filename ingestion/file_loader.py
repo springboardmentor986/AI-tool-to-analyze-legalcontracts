@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 def text_extractor(uploaded_file):
     """
-    Handles PDF, DOCX, TXT uploads.
+    Handles PDF, DOCX, and TXT document uploads.
     Returns a LIST of dictionaries:
     [
         {"text": "...", "source": "text/ocr", "page": 1},
@@ -22,7 +22,7 @@ def text_extractor(uploaded_file):
     extracted_data = []
 
     try:
-        # ---------- PDF ----------
+        # Handle PDF documents
         if file_name.endswith(".pdf"):
             file_bytes = uploaded_file.read()
             reader = PdfReader(BytesIO(file_bytes))
@@ -37,10 +37,9 @@ def text_extractor(uploaded_file):
                 
                 source_type = "text"
 
-                # If text is minimal, try OCR
                 if needs_ocr(text):
                     try:
-                        # Convert specific page to image
+                        # Convert specific PDF page to image for OCR processing
                         images = convert_from_bytes(
                             file_bytes, 
                             first_page=page_num, 
@@ -53,7 +52,7 @@ def text_extractor(uploaded_file):
                                 source_type = "ocr"
                     except Exception as e:
                         logger.warning(f"OCR failed for page {page_num}: {e}")
-                        # Fallback to whatever text we found (even if empty)
+                        # Fallback to extracted text even if empty
                 
                 if text.strip():
                     extracted_data.append({
@@ -64,7 +63,7 @@ def text_extractor(uploaded_file):
 
             return extracted_data
         
-        # ---------- DOCX ----------
+        # Handle Word documents
         elif file_name.endswith(".docx"):
             doc = Document(uploaded_file)
             full_text = ""
@@ -79,7 +78,7 @@ def text_extractor(uploaded_file):
                 })
             return extracted_data
         
-        # ---------- TXT ----------
+        # Handle raw text files
         elif file_name.endswith(".txt"):
             text = uploaded_file.read().decode("UTF-8")
             if text.strip():

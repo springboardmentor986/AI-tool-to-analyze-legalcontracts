@@ -19,7 +19,7 @@ def save_to_history(contract_text, final_report, agent_outputs, risk_level):
     """Saves the analysis result to the history JSON file."""
     history = load_history()
     
-    # Create a summary snippet
+    # Generate a brief summary snippet for the history card
     summary_snippet = final_report[:200] + "..." if final_report else "No report generated."
     
     entry = {
@@ -31,10 +31,10 @@ def save_to_history(contract_text, final_report, agent_outputs, risk_level):
         "agent_outputs": agent_outputs
     }
     
-    # Insert at the beginning (newest first)
+    # Keep newest edits at the top of the list
     history.insert(0, entry)
     
-    # Optional: Limit history size (e.g., last 50 entries)
+    # Cap history at the last 50 entries to prevent infinite growth
     if len(history) > 50:
         history = history[:50]
 

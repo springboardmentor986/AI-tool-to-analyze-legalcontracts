@@ -9,12 +9,13 @@ import re
 import asyncio
 import sys
 import uuid
+import base64
 from ingestion.file_loader import text_extractor
 from orchestration.graph import build_clauseai_graph
 from utils.history_manager import save_to_history, load_history
 from utils.ui_components import display_lottie, inject_custom_css
 
-# ---------- PAGE CONFIG ----------
+# Configure main page settings
 st.set_page_config(
     page_title="ClauseAI – Intelligent Contract Analysis",
     page_icon="⚖️",
@@ -23,14 +24,14 @@ st.set_page_config(
 )
 
 try:
-    # Use V3 Cyber CSS with cache buster
+    # Load custom CSS
     with open("assets/style.css") as f:
         st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
     inject_custom_css() 
 except:
-    pass # Fallback if CSS not found
+    pass
 
-# ---------- SESSION STATE ----------
+# Initialize session state variables
 if "analysis_result" not in st.session_state:
     st.session_state.analysis_result = None
 if "report_tone" not in st.session_state: st.session_state.report_tone = "Standard Professional"
@@ -40,26 +41,25 @@ if "included_sections" not in st.session_state:
     st.session_state.included_sections = ["Executive Summary", "Compliance Analysis", "Financial Analysis", "Legal Risks", "Operational Notes"]
 
 
-# ---------- SIDEBAR NAVIGATION ----------
+# Sidebar Navigation
 with st.sidebar:
     st.markdown("## ClauseAI ⚡")
     
-    # Handle Programmatic Navigation (Must be done before widget render)
-    default_index = 0
+    # Handle Programmatic Navigation safely
+    manual_select = None
     if st.session_state.get("force_analysis_view", False):
-        default_index = 0
-        if "main_menu" in st.session_state:
-            del st.session_state["main_menu"] # Reset widget state
-        st.session_state.force_analysis_view = False # Reset flag
+        manual_select = 0
+        st.session_state.force_analysis_view = False
 
     # Navbar
     selected_page = option_menu(
         menu_title=None,
-        options=["Analysis", "History"],
-        icons=["search", "clock-history"],
+        options=["Analysis", "Dashboard", "History"],
+        icons=["search", "bar-chart-fill", "clock-history"],
         menu_icon="cast",
-        default_index=default_index,
-        key="main_menu", # Add key to control state
+        default_index=0,
+        manual_select=manual_select, # Forces the React component to switch state 
+        key="main_menu",
         styles={
             "container": {"background-color": "transparent"},
             "icon": {"color": "#818cf8", "font-size": "16px"}, 
@@ -70,14 +70,21 @@ with st.sidebar:
     
     add_vertical_space(2)
     
+    # Language Selector
+    from utils.translator import LANGUAGES
+    selected_language = st.selectbox("🌐 Translation Language", list(LANGUAGES.keys()), index=0)
+    st.session_state.target_lang = LANGUAGES[selected_language]
+    
+    st.divider()
+    
     # Global Info
     st.info("💡 **Pro Tip**: Upload documents and use the configure button to customize your analysis.")
     
     add_vertical_space(10)
     st.markdown("---")
-    st.caption("v2.0.0 | Powered by Gemini & Pinecone")
+    st.caption("ClauseAI v2.0")
 
-# ---------- MAIN CONTENT : ANALYSIS PAGE ----------
+# Main Page Routing
 if selected_page == "Analysis":
     
     # Hero Section - Cyber / Tech Theme
@@ -174,7 +181,9 @@ if selected_page == "Analysis":
                 extracted = text_extractor(file)
                 if extracted:
                     all_extracted_data.extend(extracted)
-                    contract_text += "\\n".join([item["text"] for item in extracted]) + "\\n\\n"
+                    contract_text += "\n".join([item["text"] for item in extracted]) + "\n\n"
+                else:
+                    st.warning(f"⚠️ Could not extract any readable text from '{file.name}'. If this is a scanned document, please ensure Tesseract OCR is installed.")
         except Exception as e:
             st.error(f"Error reading file: {e}")
     elif pasted_text:
@@ -237,10 +246,7 @@ if selected_page == "Analysis":
                 risk_match = re.search(r"Risk Level:?\\s*(\\w+)", result.get("final_report", ""), re.IGNORECASE)
                 risk_level = risk_match.group(1).upper() if risk_match else "N/A"
                 
-                # Generate unique View ID for this report session (fixes auto-download)
-                st.session_state.view_id = str(uuid.uuid4())
-
-                # SAVE TO HISTORY
+                # Save analysis to history
                 save_to_history(
                     contract_text=contract_text,
                     final_report=result.get("final_report", ""),
@@ -282,7 +288,17 @@ if selected_page == "Analysis":
         st.markdown("#### 📌 Executive Summary")
         exec_summary_match = re.search(r"(?:#+)?\\s*1\\.\\s*Executive Summary(.*?)(?:#+)?\\s*2\\.", final_report, re.DOTALL | re.IGNORECASE)
         summary_text = exec_summary_match.group(1).strip() if exec_summary_match else "See full report details."
-        st.markdown(summary_text)
+        
+        target_lang = getattr(st.session_state, 'target_lang', 'en')
+        
+        if target_lang != 'en':
+            from utils.translator import translate_text
+            with st.spinner("Translating summary..."):
+                display_summary = translate_text(summary_text, target_lang)
+        else:
+            display_summary = summary_text
+            
+        st.markdown(display_summary)
         st.markdown('</div>', unsafe_allow_html=True)
         
         # 3. Detailed Agent Analysis Tabs
@@ -293,46 +309,82 @@ if selected_page == "Analysis":
             tabs = st.tabs([k.capitalize() for k in outputs.keys()])
             for i, (agent, content) in enumerate(outputs.items()):
                 with tabs[i]:
-                    st.markdown(content)
+                    if target_lang != 'en':
+                        from utils.translator import translate_text
+                        display_content = translate_text(content, target_lang)
+                    else:
+                        display_content = content
+                    st.markdown(display_content)
         
         add_vertical_space(2)
         
         # 4. Export Actions
         st.markdown("### 📥 Export Report")
         
-        # Generate reports if not already in session state
-        if "pdf_bytes" not in st.session_state or "docx_bytes" not in st.session_state:
+        # Translate full report for download if needed
+        if target_lang != 'en':
+            from utils.translator import translate_text
+            with st.spinner(f"Translating full report to {target_lang} for download..."):
+                full_report_translation = translate_text(final_report, target_lang)
+        else:
+            full_report_translation = final_report
+
+        # Cache keys based on target language
+        cache_key_pdf = f"pdf_bytes_{target_lang}"
+        cache_key_docx = f"docx_bytes_{target_lang}"
+
+        # Generate reports if not already in session state for this language
+        if cache_key_pdf not in st.session_state or cache_key_docx not in st.session_state:
              with st.spinner("Preparing export files..."):
-                from utils.report_generator import generate_pdf, generate_word
-                st.session_state.pdf_bytes = generate_pdf(final_report)
-                st.session_state.docx_bytes = generate_word(final_report)
+                from utils.report_generator import generate_pdf, generate_word, generate_html
+                
+                # FPDF lacks Complex Text Layout for non-Latin fonts, so we use HTML for translations
+                if target_lang != 'en':
+                    st.session_state[cache_key_pdf] = generate_html(full_report_translation)
+                else:
+                    st.session_state[cache_key_pdf] = generate_pdf(full_report_translation)
+                
+                st.session_state[cache_key_docx] = generate_word(full_report_translation)
         
         # Display buttons side-by-side
-        view_id = st.session_state.get("view_id", f"gen_{uuid.uuid4()}")
-        
+        # Export Buttons
         add_vertical_space(1)
         
+        # Create custom HTML download links to prevent Streamlit's auto-download bug
+        def create_download_link(data_bytes, filename, button_text, color="#10b981"):
+            b64 = base64.b64encode(data_bytes).decode()
+            css = f"""
+            <a href="data:application/octet-stream;base64,{b64}" download="{filename}"
+               style="display: inline-block; width: 100%; text-align: center; 
+                      background-color: transparent; color: {color}; 
+                      border: 1px solid {color}; padding: 8px 16px; 
+                      border-radius: 4px; text-decoration: none; 
+                      font-weight: 500; font-family: 'Space Mono', monospace; 
+                      transition: all 0.3s ease;">
+                {button_text}
+            </a>
+            """
+            return css
+
         col_ex1, col_ex2 = st.columns(2)
         with col_ex1:
-            st.download_button(
-                label="📄 Download PDF", 
-                data=st.session_state.pdf_bytes, 
-                file_name="clauseai_report.pdf", 
-                mime="application/pdf", 
-                use_container_width=True, 
-                key=f"safe_dl_pdf_{view_id}"
-            )
+            if target_lang != 'en':
+                html_link = create_download_link(st.session_state[cache_key_pdf], f"clauseai_report_{target_lang}.html", "🌐 Download Web Report (HTML)", "#22d3ee")
+                st.markdown(html_link, unsafe_allow_html=True)
+            else:
+                pdf_link = create_download_link(st.session_state[cache_key_pdf], "clauseai_report.pdf", "📄 Download PDF", "#22d3ee")
+                st.markdown(pdf_link, unsafe_allow_html=True)
+            
         with col_ex2:
-            st.download_button(
-                label="📝 Download Word", 
-                data=st.session_state.docx_bytes, 
-                file_name="clauseai_report.docx", 
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", 
-                use_container_width=True, 
-                key=f"safe_dl_word_{view_id}"
-            )
+            word_link = create_download_link(st.session_state[cache_key_docx], "clauseai_report.docx", "📝 Download Word", "#818cf8")
+            st.markdown(word_link, unsafe_allow_html=True)
 
 
+
+# ---------- DASHBOARD PAGE ----------
+elif selected_page == "Dashboard":
+    from utils.analytics import render_dashboard
+    render_dashboard()
 
 # ---------- HISTORY PAGE ----------
 elif selected_page == "History":
@@ -346,7 +398,15 @@ elif selected_page == "History":
         for item in history_data:
             with st.expander(f"📄 {item['timestamp']} - Risk: {item.get('risk_level', 'N/A')}"):
                 st.markdown(f"**Risk Level:** {item.get('risk_level', 'N/A')}")
-                st.markdown(f"**Summary:** {item.get('summary', 'No summary')}")
+                
+                target_lang = getattr(st.session_state, 'target_lang', 'en')
+                if target_lang != 'en':
+                    from utils.translator import translate_text
+                    display_summary = translate_text(item.get('summary', 'No summary'), target_lang)
+                else:
+                    display_summary = item.get('summary', 'No summary')
+                    
+                st.markdown(f"**Summary:** {display_summary}")
                 
                 if st.button("View Full Report", key=f"view_{item['id']}"):
                     st.session_state.analysis_result = {
@@ -354,19 +414,21 @@ elif selected_page == "History":
                         "agent_outputs": item["agent_outputs"]
                     }
                     # Clear report cache to ensure regeneration for this history item
-                    if "pdf_bytes" in st.session_state: del st.session_state.pdf_bytes
-                    if "docx_bytes" in st.session_state: del st.session_state.docx_bytes
-                    
-                    # Set unique View ID for download buttons (Must be fresh UUID every view!)
-                    st.session_state.view_id = str(uuid.uuid4())
+                    keys_to_delete = [k for k in st.session_state.keys() if k.startswith("pdf_bytes") or k.startswith("docx_bytes")]
+                    for k in keys_to_delete:
+                        del st.session_state[k]
 
-                    # Set flag to force navigation on rerun
                     st.session_state.force_analysis_view = True
                     st.rerun()
                     
                 st.divider()
                 st.markdown("### Full Report Preview")
-                st.markdown(item["final_report"])
+                if target_lang != 'en':
+                    from utils.translator import translate_text
+                    display_report = translate_text(item["final_report"], target_lang)
+                else:
+                    display_report = item["final_report"]
+                st.markdown(display_report)
         
         add_vertical_space(3)
         st.markdown("---")

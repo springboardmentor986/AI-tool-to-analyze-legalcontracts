@@ -37,16 +37,12 @@ class BaseAgent:
         Returns:
             str: The analysis result from the LLM.
         """
-        # 1. Context Retrieval Strategy
-        # We query the vector database to find the most relevant clauses for this specific agent's task.
+        # Query the vector DB to find relevant clauses
         context_query = f"{self.task} {user_message}"
         retrieved_context = self.retrieve_context(context_query)
         
-        # 2. Fallback Mechanism
-        # If vector search returns insufficient data (e.g., short text or ingestion issue),
-        # we fall back to processing the raw text directly, truncated to safe limits.
+        # Fallback for short texts or vector DB misses
         if not retrieved_context.strip():
-            # Log usage of fallback (professional logging)
             import logging
             logger = logging.getLogger(__name__)
             logger.warning(f"[{self.role}] Context retrieval failed/empty. Using raw text fallback.")
@@ -54,7 +50,7 @@ class BaseAgent:
         else:
             final_context = retrieved_context
 
-        # 3. Prompt Engineering & Execution
+        # Construct the final prompt
         prompt = BASE_AGENT_PROMPT.format(
             role=self.role,
             task=self.task,
