@@ -158,7 +158,6 @@ Backend
 |
 |──utils
 |   |──chunks.py
-|
 |──venv
 |──.env
 |──.gitignore
